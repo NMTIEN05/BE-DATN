@@ -1,0 +1,443 @@
+{
+	"swagger": "2.0",
+	"info": {
+		"version": "1.0.0",
+		"title": "REST API",
+		"description": ""
+	},
+	"host": "localhost:8888/api",
+	"basePath": "/",
+	"schemes": [
+		"http"
+	],
+	"paths": {
+		"/categories": {
+			"get": {
+				"tags": [
+					"Category"
+				],
+				"summary": "Lấy danh sách danh mục",
+				"parameters": [
+					{
+						"name": "offset",
+						"in": "query",
+						"description": "Vị trí bắt đầu",
+						"required": false,
+						"schema": {
+							"type": "integer",
+							"default": 0
+						}
+					},
+					{
+						"name": "limit",
+						"in": "query",
+						"description": "Số lượng danh mục",
+						"required": false,
+						"schema": {
+							"type": "integer",
+							"default": 5
+						}
+					},
+					{
+						"name": "name",
+						"in": "query",
+						"description": "Tìm theo tên danh mục",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "sortBy",
+						"in": "query",
+						"description": "Sắp xếp theo thuộc tính",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"default": "created_at"
+						}
+					},
+					{
+						"name": "order",
+						"in": "query",
+						"description": "Thứ tự sắp xếp",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"enum": [
+								"asc",
+								"desc"
+							],
+							"default": "desc"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Lấy danh sách danh mục thành công"
+					},
+					"500": {
+						"description": "Lỗi server"
+					}
+				}
+			},
+			"post": {
+				"tags": [
+					"Category"
+				],
+				"summary": "Tạo danh mục mới",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": [
+									"name"
+								],
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"description": {
+										"type": "string"
+									}
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Tạo danh mục thành công"
+					},
+					"400": {
+						"description": "Danh mục đã tồn tại hoặc lỗi dữ liệu"
+					}
+				}
+			}
+		},
+		"/categories/{id}": {
+			"get": {
+				"tags": [
+					"Category"
+				],
+				"summary": "Lấy danh mục theo ID",
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Lấy danh mục thành công"
+					},
+					"404": {
+						"description": "Không tìm thấy danh mục"
+					}
+				}
+			},
+			"put": {
+				"tags": [
+					"Category"
+				],
+				"summary": "Cập nhật danh mục",
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"description": {
+										"type": "string"
+									}
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Cập nhật danh mục thành công"
+					},
+					"400": {
+						"description": "Lỗi cập nhật"
+					},
+					"404": {
+						"description": "Không tìm thấy danh mục"
+					}
+				}
+			},
+			"delete": {
+				"tags": [
+					"Category"
+				],
+				"summary": "Xoá danh mục",
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Xoá danh mục thành công"
+					},
+					"404": {
+						"description": "Không tìm thấy danh mục"
+					}
+				}
+			}
+		},
+		"/authors": {
+			"get": {
+				"tags": [
+					"Author"
+				],
+				"summary": "Lấy danh sách tác giả",
+				"parameters": [
+					{
+						"name": "offset",
+						"in": "query",
+						"description": "Vị trí bắt đầu",
+						"required": false,
+						"schema": {
+							"type": "integer",
+							"default": 0
+						}
+					},
+					{
+						"name": "limit",
+						"in": "query",
+						"description": "Số lượng tác giả",
+						"required": false,
+						"schema": {
+							"type": "integer",
+							"default": 5
+						}
+					},
+					{
+						"name": "name",
+						"in": "query",
+						"description": "Tìm theo tên tác giả",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "sortBy",
+						"in": "query",
+						"description": "Sắp xếp theo trường",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"default": "created_at"
+						}
+					},
+					{
+						"name": "order",
+						"in": "query",
+						"description": "Thứ tự sắp xếp",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"enum": [
+								"asc",
+								"desc"
+							],
+							"default": "desc"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Lấy danh sách tác giả thành công"
+					},
+					"500": {
+						"description": "Lỗi server"
+					}
+				}
+			},
+			"post": {
+				"tags": [
+					"Author"
+				],
+				"summary": "Tạo tác giả mới",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": [
+									"name"
+								],
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"bio": {
+										"type": "string"
+									},
+									"birth_date": {
+										"type": "string",
+										"format": "date"
+									},
+									"nationality": {
+										"type": "string"
+									}
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Tạo tác giả thành công"
+					},
+					"400": {
+						"description": "Tác giả đã tồn tại"
+					},
+					"500": {
+						"description": "Lỗi server"
+					}
+				}
+			}
+		},
+		"/authors/{id}": {
+			"get": {
+				"tags": [
+					"Author"
+				],
+				"summary": "Lấy tác giả theo ID",
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Lấy tác giả thành công"
+					},
+					"404": {
+						"description": "Không tìm thấy tác giả"
+					},
+					"500": {
+						"description": "Lỗi server"
+					}
+				}
+			},
+			"put": {
+				"tags": [
+					"Author"
+				],
+				"summary": "Cập nhật tác giả",
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"bio": {
+										"type": "string"
+									},
+									"birth_date": {
+										"type": "string",
+										"format": "date"
+									},
+									"nationality": {
+										"type": "string"
+									}
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Cập nhật tác giả thành công"
+					},
+					"400": {
+						"description": "Lỗi cập nhật"
+					},
+					"404": {
+						"description": "Không tìm thấy tác giả"
+					},
+					"500": {
+						"description": "Lỗi server"
+					}
+				}
+			},
+			"delete": {
+				"tags": [
+					"Author"
+				],
+				"summary": "Xoá tác giả",
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Xoá tác giả thành công"
+					},
+					"404": {
+						"description": "Không tìm thấy tác giả"
+					},
+					"500": {
+						"description": "Lỗi server"
+					}
+				}
+			}
+		}
+	}
+}

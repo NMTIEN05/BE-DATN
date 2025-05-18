@@ -1,0 +1,1 @@
+// One Time Password (OTP) là một mã xác thực một lần sử dụng, thường được sử dụng để xác thực người dùng một cách an toàn. Trong ứng dụng này, chúng ta sẽ sử dụng OTP để xác thực người dùng khi họ quên mật khẩu.

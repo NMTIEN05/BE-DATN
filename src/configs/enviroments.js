@@ -1,0 +1,18 @@
+import dotenv from "dotenv";
+
+dotenv.config();
+
+export const {
+	PORT,
+	DB_URI,
+	JWT_SECRET,
+	JWT_REFRESH_SECRET,
+	NODE_ENV,
+	SUB_CATEGORY_DEFAULT,
+	CATEGOGY_DEFAULT,
+	EMAIL_USERNAME,
+	EMAIL_PASSWORD,
+	RESET_PASSWORD_SECRET,
+	RESET_PASSWORD_EXPIRES,
+	FRONTEND_URL,
+} = process.env;
