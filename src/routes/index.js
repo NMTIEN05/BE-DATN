@@ -1,24 +1,17 @@
 import express from "express";
-import { createCategory, deleteCategory, getCategory, getCategorybyId, updateCategory } from "../controllers/Category.js";
+import categoryRoutes from "../routes/Category.js";
+import capacityRoutes from "../routes/Capacity.js";
 
+const router = express.Router();
 
-const router = express.Router();  
-
-
-// Route kiểm tra kết nối từ frontend
+// Kiểm tra kết nối frontend
 router.get("/ping", (req, res) => {
   console.log("Frontend đã kết nối thành công");
   res.json({ message: "Backend kết nối thành công!" });
 });
 
-// Route category
-router.post("/category", createCategory);
-router.get("/category", getCategory);
-router.get("/category/:id", getCategorybyId);
-router.put("/category/:id", updateCategory);
-router.delete("/category/:id", deleteCategory);
 
-
-
+router.use("/category", categoryRoutes);
+router.use("/capacity", capacityRoutes);
 
 export default router;
