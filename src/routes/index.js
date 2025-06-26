@@ -9,6 +9,8 @@ import productGroupRoutes from "../routes/ProductGroup.js";
 import attributeValueRoutes from "../routes/AttributeValue.js";
 import userRoutes from "../routes/User.js"; // Đã thêm dòng này từ nhánh mới
 
+import cartRoutes from "../routes/Cart.js"
+
 const router = express.Router();
 
 // Kiểm tra kết nối frontend
@@ -26,6 +28,7 @@ router.use("/color", colerRouter);
 router.use("/variants", variantRoutes);
 router.use("/attributes", attributeRoutes);
 router.use("/AttributeValue", attributeValueRoutes);
-router.use("/auth", userRoutes); // Đăng ký route auth
+router.use("/auth", userRoutes); 
+router.use("/cart",cartRoutes)
 
 export default router;
