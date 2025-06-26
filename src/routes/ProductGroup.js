@@ -2,34 +2,30 @@ import express from "express";
 import {
   getAllProductGroups,
   getProductGroupBySlug,
+  getProductGroupById,
   createProductGroup,
   updateProductGroup,
   deleteProductGroup,
   getProductsByGroupId,
-<<<<<<< HEAD
-=======
-  getProductGroupById,
->>>>>>> 28818bc (Làm tính năng người dùng và phân quyền)
 } from "../controllers/ProductGroup.js";
 
 const router = express.Router();
 
-<<<<<<< HEAD
+// Lấy tất cả nhóm
 router.get("/", getAllProductGroups);
-router.get("/:slug", getProductGroupBySlug);
-router.post("/", createProductGroup);
-router.put("/:id", updateProductGroup);
-router.delete("/:id", deleteProductGroup);
 
+// Lấy nhóm theo slug
+router.get("/slug/:slug", getProductGroupBySlug);
+
+// Lấy nhóm theo id
+router.get("/:id", getProductGroupById);
+
+// Lấy danh sách sản phẩm thuộc nhóm
 router.get("/:id/products", getProductsByGroupId);
 
-=======
-router.get("/", getAllProductGroups); // /api/productGroup
-router.get("/slug/:slug", getProductGroupBySlug); // /api/productGroup/slug/:slug
-router.get("/:id", getProductGroupById); // /api/productGroup/:id
-router.get("/:id/products", getProductsByGroupId); // /api/productGroup/:id/products
+// Tạo, cập nhật, xoá nhóm
 router.post("/", createProductGroup);
 router.put("/:id", updateProductGroup);
 router.delete("/:id", deleteProductGroup);
->>>>>>> 28818bc (Làm tính năng người dùng và phân quyền)
+
 export default router;

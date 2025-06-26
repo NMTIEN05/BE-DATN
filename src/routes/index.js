@@ -7,11 +7,7 @@ import variantRoutes from "../routes/Variant.js";
 import attributeRoutes from "../routes/Attribute.js";
 import productGroupRoutes from "../routes/ProductGroup.js";
 import attributeValueRoutes from "../routes/AttributeValue.js";
-<<<<<<< HEAD
-=======
-
-import userRoutes from "../routes/User.js";
->>>>>>> 28818bc (Làm tính năng người dùng và phân quyền)
+import userRoutes from "../routes/User.js"; // Đã thêm dòng này từ nhánh mới
 
 const router = express.Router();
 
@@ -20,18 +16,16 @@ router.get("/ping", (req, res) => {
   console.log("Frontend đã kết nối thành công");
   res.json({ message: "Backend kết nối thành công!" });
 });
+
 // Đăng ký các route
 router.use("/category", categoryRoutes);
 router.use("/capacity", capacityRoutes);
-router.use("/product",  productRoutes );
-router.use("/productGroup",  productGroupRoutes );
-router.use("/color",  colerRouter );
-router.use("/variants",  variantRoutes );
-router.use("/attributes",  attributeRoutes );
-router.use("/AttributeValue",  attributeValueRoutes );
-<<<<<<< HEAD
-=======
-router.use("/auth",  userRoutes );
->>>>>>> 28818bc (Làm tính năng người dùng và phân quyền)
+router.use("/product", productRoutes);
+router.use("/productGroup", productGroupRoutes);
+router.use("/color", colerRouter);
+router.use("/variants", variantRoutes);
+router.use("/attributes", attributeRoutes);
+router.use("/AttributeValue", attributeValueRoutes);
+router.use("/auth", userRoutes); // Đăng ký route auth
 
 export default router;
