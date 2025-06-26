@@ -8,8 +8,6 @@ router.get("/:id", getColorById);
 router.delete("/:id", deleteColor);
 router.put("/:id",updateColor );
 
-
-
-
 // router.get("/", getAllProducts);
 export default router;
+ 
