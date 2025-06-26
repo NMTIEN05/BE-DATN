@@ -7,6 +7,11 @@ import variantRoutes from "../routes/Variant.js";
 import attributeRoutes from "../routes/Attribute.js";
 import productGroupRoutes from "../routes/ProductGroup.js";
 import attributeValueRoutes from "../routes/AttributeValue.js";
+<<<<<<< HEAD
+=======
+
+import userRoutes from "../routes/User.js";
+>>>>>>> 28818bc (Làm tính năng người dùng và phân quyền)
 
 const router = express.Router();
 
@@ -24,5 +29,9 @@ router.use("/color",  colerRouter );
 router.use("/variants",  variantRoutes );
 router.use("/attributes",  attributeRoutes );
 router.use("/AttributeValue",  attributeValueRoutes );
+<<<<<<< HEAD
+=======
+router.use("/auth",  userRoutes );
+>>>>>>> 28818bc (Làm tính năng người dùng và phân quyền)
 
 export default router;

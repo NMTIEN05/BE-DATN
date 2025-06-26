@@ -1,0 +1,18 @@
+import express from "express";
+import { deleteUser, getAllUsers, getUserById, login, register, updateUser } from "../controllers/User.js";
+import { authenticate, requireAdmin } from "../middlewares/auth.js";
+
+
+
+const router = express.Router();
+
+router.post("/register", register  )
+router.post("/login", login  )
+// Public (hoặc đã login)
+router.get("/", authenticate, getAllUsers);
+router.get("/:id", authenticate, getUserById);
+router.put("/:id", authenticate, updateUser);
+// ✅ Chỉ admin mới được xoá
+router.delete("/:id", authenticate, requireAdmin, deleteUser);
+
+export default router;
