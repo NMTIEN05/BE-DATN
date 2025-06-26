@@ -1,8 +1,6 @@
 import Cart from "../model/Cart.js";
 import CartItem from "../model/CartItem.js";
 import Variant from "../model/Variant.js";
-import User from "../model/User.js";
-
 import mongoose from "mongoose";
 
 export const addToCart = async (req, res) => {
@@ -114,25 +112,5 @@ export const clearCart = async (req, res) => {
     res.json({ message: "Đã xoá toàn bộ giỏ hàng" });
   } catch (err) {
     res.status(500).json({ message: "Lỗi xoá giỏ hàng", error: err.message });
-  }
-};
-export const getCartItemWithUser = async (req, res) => {
-  try {
-    const { itemId } = req.params;
-
-    const item = await CartItem.findById(itemId)
-      .populate("productId")
-      .populate("variantId");
-
-    if (!item) return res.status(404).json({ message: "Không tìm thấy item" });
-
-    const cart = await Cart.findById(item.cartId).populate({ path: "userId", model: "UserModel" });
-
-    res.json({
-      ...item.toObject(),
-      user: cart?.userId || null,
-    });
-  } catch (err) {
-    res.status(500).json({ message: "Lỗi server", error: err.message });
   }
 };
