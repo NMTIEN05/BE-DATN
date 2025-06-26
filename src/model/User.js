@@ -15,6 +15,12 @@ const userSchema = new mongoose.Schema({
 
     isActive: { type: Boolean, default: true },
 })
+userSchema.set("toJSON", {
+  transform: function (doc, ret) {
+    delete ret.password;
+    return ret;
+  }
+});
 const UserModel = mongoose.model("UserModel", userSchema);
 export default UserModel;
 
