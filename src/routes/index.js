@@ -9,6 +9,10 @@ import productGroupRoutes from "../routes/ProductGroup.js";
 import attributeValueRoutes from "../routes/AttributeValue.js";
 import userRoutes from "../routes/User.js"; // Đã thêm dòng này từ nhánh mới
 import cartRoutes from "../routes/Cart.js";
+import orderRoutes from "../routes/Order.js";
+import orderItemRoutes from "../routes/OrderItem.js";
+
+
 
 
 
@@ -32,6 +36,8 @@ router.use("/attributes", attributeRoutes);
 router.use("/AttributeValue", attributeValueRoutes);
 router.use("/auth", userRoutes); 
 router.use("/cart",cartRoutes)
+router.use("/orders",orderRoutes)
+router.use("/orderitem", orderItemRoutes);
 
 
 export default router;
