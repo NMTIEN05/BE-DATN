@@ -99,42 +99,53 @@ async function getUserById(req, res) {
 }
 
 // [POST] Đăng nhập
+
 async function login(req, res) {
   try {
+    // ✅ Validate đầu vào
     const { error } = loginSchema.validate(req.body);
-    if (error) return res.status(400).json({ message: error.details[0].message });
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
 
     const { email, password } = req.body;
 
+    // ✅ Tìm user theo email
     const user = await UserModel.findOne({ email });
     if (!user) {
       return res.status(401).json({ message: "Email hoặc mật khẩu không đúng" });
     }
 
+    // ✅ So sánh mật khẩu
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Email hoặc mật khẩu không đúng" });
     }
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET || "tiendz",
-      { expiresIn: "7d" }
-    );
+    // ✅ Tạo JWT token với "userId" để đồng bộ với middleware
+const token = jwt.sign(
+  { id: user._id.toString(), role: user.role }, // ✅ phải là "id" chứ không phải "userId"
+  process.env.JWT_SECRET || "tiendz",
+  { expiresIn: "7d" }
+);
 
+
+
+
+    // ✅ Trả response
     res.json({
-  token,
-  user: {
-    _id: user._id,
-    username: user.username,
-    email: user.email,
-    role: user.role,
-    isActive: user.isActive, // thêm trường nào bạn cần
-  }
-});
-
+      token,
+      user: {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+      },
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Lỗi server khi đăng nhập" });
   }
 }
 
