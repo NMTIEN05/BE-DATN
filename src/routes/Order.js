@@ -9,13 +9,14 @@ import {
 } from "../controllers/Order.js";
 import { requireAuth } from "../middlewares/requireAuth.js";
 import { requireAdmin } from "../middlewares/auth.js";
+import {authenticate}  from "../middlewares/auth.js";
 
 const router = express.Router();
 
 router.use(requireAuth);
 
 // Tạo đơn hàng
-router.post("", requireAuth, createOrder);
+router.post("", requireAuth,authenticate, createOrder);
 
 // Người dùng lấy danh sách đơn hàng của mình
 router.get("/my-orders", getOrdersByUser);

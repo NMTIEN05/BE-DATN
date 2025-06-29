@@ -4,33 +4,29 @@ import OrderItem from "../model/OrderItem.js";
 import Cart from "../model/Cart.js";
 import CartItem from "../model/CartItem.js";
 
-
 export const createOrder = async (req, res) => {
   try {
-    const userId = req.user.userId; // ✅ từ middleware
+    const userId = req.user?.id; // Lấy từ JWT middleware
+    console.log("🧪 userId nhận được:", userId);
 
-    console.log("userId nhận được:", userId);
-
-    // Ép kiểu và kiểm tra hợp lệ
-    if (!userId || !mongoose.Types.ObjectId.isValid(String(userId))) {
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ message: "ID người dùng không hợp lệ" });
     }
 
-    const userObjectId = new mongoose.Types.ObjectId(String(userId));
+    const userObjectId = new mongoose.Types.ObjectId(userId);
 
-    // Lấy giỏ hàng của user
     const cart = await Cart.findOne({ userId: userObjectId });
+    console.log("🧪 cart nhận được:", cart);
+
     if (!cart) {
       return res.status(404).json({ message: "Không tìm thấy giỏ hàng" });
     }
 
-    // Lấy tất cả item trong giỏ
     const cartItems = await CartItem.find({ cartId: cart._id }).populate("variantId");
     if (!cartItems.length) {
       return res.status(400).json({ message: "Giỏ hàng trống" });
     }
 
-    // ✅ Bước 1: tạo Order trước (tạm thời rỗng)
     const order = await Order.create({
       userId: userObjectId,
       items: [],
@@ -40,10 +36,9 @@ export const createOrder = async (req, res) => {
       status: "pending",
     });
 
-    // ✅ Bước 2: tạo các OrderItem với orderId chính xác
     const orderItems = await Promise.all(
       cartItems.map(async (item) => {
-        const price = item.variantId.price;
+        const price = item.variantId?.price || 0;
         return await OrderItem.create({
           orderId: order._id,
           productId: item.productId,
@@ -54,7 +49,6 @@ export const createOrder = async (req, res) => {
       })
     );
 
-    // ✅ Bước 3: cập nhật lại đơn hàng
     const totalAmount = orderItems.reduce(
       (sum, item) => sum + item.price * item.quantity,
       0
@@ -64,12 +58,11 @@ export const createOrder = async (req, res) => {
     order.totalAmount = totalAmount;
     await order.save();
 
-    // ✅ Xóa giỏ hàng sau khi đặt hàng
     await CartItem.deleteMany({ cartId: cart._id });
 
     res.status(201).json(order);
   } catch (err) {
-    console.error("Error creating order:", err);
+    console.error("❌ Lỗi khi tạo đơn hàng:", err);
     res.status(500).json({
       message: "Lỗi khi tạo đơn hàng",
       error: err.message,
@@ -77,19 +70,17 @@ export const createOrder = async (req, res) => {
   }
 };
 
-
 export const getOrdersByUser = async (req, res) => {
   try {
-    const userId = req.user.userId; // ✅ đúng key từ middleware
-
-    if (!userId || !mongoose.Types.ObjectId.isValid(String(userId))) {
+    const userId = req.user?.id; // Sửa lại lấy đúng key "id"
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ message: "ID người dùng không hợp lệ" });
     }
 
     const orders = await Order.find({ userId }).populate({
       path: "items",
       populate: {
-        path: "variantId", // nếu bạn muốn xem chi tiết biến thể
+        path: "variantId",
         model: "Variant",
       },
     });
@@ -100,17 +91,16 @@ export const getOrdersByUser = async (req, res) => {
   }
 };
 
-
 export const getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find()
-      .populate('userId', 'full_name email') // Thông tin user
+      .populate("userId", "full_name email")
       .populate({
-        path: 'items',           // items là mảng ObjectId OrderItem
+        path: "items",
         populate: {
-          path: 'variantId',     // populate biến thể trong từng OrderItem
-          select: 'name imageUrl price'
-        }
+          path: "variantId",
+          select: "name imageUrl price",
+        },
       });
 
     res.json(orders);
@@ -118,7 +108,6 @@ export const getAllOrders = async (req, res) => {
     res.status(500).json({ message: "Lỗi lấy tất cả đơn hàng", error: err.message });
   }
 };
-
 
 export const getOrderById = async (req, res) => {
   try {
