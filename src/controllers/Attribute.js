@@ -2,14 +2,51 @@
 import Attribute from "../model/Attribute.js";
 
 // GET all attributes
-export const getAllAttributes = async (req,res) => {
+export const getAllAttributes = async (req, res) => {
   try {
-    const attributes = await Attribute.find({ deletedAt: null });
-    res.json(attributes);
+    let {
+      offset = "0",
+      limit = "10",
+      sortBy = "createdAt",
+      order = "desc",
+      search,
+    } = req.query;
+
+    const offsetNumber = parseInt(offset, 10);
+    const limitNumber = parseInt(limit, 10);
+    const sortOrder = order === "desc" ? -1 : 1;
+
+    // Tạo điều kiện lọc
+    const filter = { deletedAt: null };
+    if (search) {
+      filter.name = { $regex: search, $options: "i" };
+    }
+
+    // Truy vấn dữ liệu
+    const attributes = await Attribute.find(filter)
+      .sort({ [sortBy]: sortOrder })
+      .skip(offsetNumber)
+      .limit(limitNumber);
+
+    const total = await Attribute.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      data: attributes,
+      pagination: {
+        total,
+        offset: offsetNumber,
+        limit: limitNumber,
+      },
+    });
   } catch (error) {
-    res.status(500).json({ message: "Lỗi lấy danh sách thuộc tính", error });
+    res.status(500).json({
+      message: "Lỗi lấy danh sách thuộc tính",
+      error: error.message,
+    });
   }
 };
+
 
 // GET one attribute by ID
 export const getAttributeById = async (req,res) => {

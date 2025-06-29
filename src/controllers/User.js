@@ -75,8 +75,45 @@ async function deleteUser(req, res) {
 // [GET] Lấy danh sách user
 async function getAllUsers(req, res) {
   try {
-    const users = await UserModel.find().select("-password");
-    res.json(users);
+    let {
+      offset = "0",
+      limit = "10",
+      sortBy = "createdAt",
+      order = "desc",
+      search,
+    } = req.query;
+
+    const offsetNumber = parseInt(offset, 10);
+    const limitNumber = parseInt(limit, 10);
+    const sortOrder = order === "desc" ? -1 : 1;
+
+    // Lọc theo username hoặc email
+    const filter = {};
+    if (search) {
+      filter.$or = [
+        { username: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // Query người dùng
+    const users = await UserModel.find(filter)
+      .select("-password") // Ẩn password
+      .sort({ [sortBy]: sortOrder })
+      .skip(offsetNumber)
+      .limit(limitNumber);
+
+    const total = await UserModel.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      data: users,
+      pagination: {
+        total,
+        offset: offsetNumber,
+        limit: limitNumber,
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

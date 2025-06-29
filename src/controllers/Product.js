@@ -6,22 +6,63 @@ import mongoose from "mongoose";
 // [GET] /api/products
 export const getAllProducts = async (req, res) => {
   try {
-    const products = await Product.find({ deletedAt: null })
+    let {
+      offset = "0",
+      limit = "10",
+      sortBy = "createdAt",
+      order = "desc",
+      groupId,
+      categoryId,
+      search,
+    } = req.query;
+
+    const offsetNumber = parseInt(offset, 10);
+    const limitNumber = parseInt(limit, 10);
+    const sortOrder = order === "desc" ? -1 : 1;
+
+    // Tạo điều kiện lọc
+    const filter = { deletedAt: null };
+    if (groupId) filter.groupId = groupId;
+    if (categoryId) filter.categoryId = categoryId;
+    if (search) {
+      filter.title = { $regex: search, $options: "i" }; // tìm theo tên gần đúng
+    }
+
+    // Query sản phẩm
+    const products = await Product.find(filter)
+      .sort({ [sortBy]: sortOrder })
+      .skip(offsetNumber)
+      .limit(limitNumber)
       .populate("categoryId")
       .populate("groupId")
       .populate({
         path: "variants",
-        match: { deletedAt: null }, // ✅ CHỈ LẤY BIẾN THỂ CHƯA XOÁ
+        match: { deletedAt: null },
         populate: {
           path: "attributes.attributeId attributes.attributeValueId",
         },
       });
 
-    res.json(products);
+    // Tổng số sản phẩm (phục vụ phân trang)
+    const total = await Product.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      data: products,
+      pagination: {
+        total,
+        offset: offsetNumber,
+        limit: limitNumber,
+      },
+    });
   } catch (error) {
-    res.status(500).json({ message: "Lỗi lấy danh sách sản phẩm", error });
+    res.status(500).json({
+      message: "Lỗi lấy danh sách sản phẩm",
+      error: error.message,
+    });
   }
 };
+
 
 
 // [GET] /api/products/:id

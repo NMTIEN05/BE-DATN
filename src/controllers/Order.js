@@ -93,7 +93,30 @@ export const getOrdersByUser = async (req, res) => {
 
 export const getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find()
+    // Lấy query từ URL
+    let {
+      offset = "0",
+      limit = "10",
+      sortBy = "createdAt",
+      order = "desc",
+      status,
+      userId,
+    } = req.query;
+
+    const offsetNumber = parseInt(offset, 10);
+    const limitNumber = parseInt(limit, 10);
+    const sortOrder = order === "desc" ? -1 : 1;
+
+    // Tạo bộ lọc
+    const filter = {};
+    if (status) filter.status = status;
+    if (userId) filter.userId = userId;
+
+    // Truy vấn đơn hàng có phân trang, lọc và sắp xếp
+    const orders = await Order.find(filter)
+      .sort({ [sortBy]: sortOrder })
+      .skip(offsetNumber)
+      .limit(limitNumber)
       .populate("userId", "full_name email")
       .populate({
         path: "items",
@@ -103,11 +126,26 @@ export const getAllOrders = async (req, res) => {
         },
       });
 
-    res.json(orders);
+    // Tổng số đơn hàng (phục vụ phân trang)
+    const total = await Order.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      data: orders,
+      pagination: {
+        total,
+        offset: offsetNumber,
+        limit: limitNumber,
+      },
+    });
   } catch (err) {
-    res.status(500).json({ message: "Lỗi lấy tất cả đơn hàng", error: err.message });
+    res.status(500).json({
+      message: "Lỗi lấy tất cả đơn hàng",
+      error: err.message,
+    });
   }
 };
+
 
 export const getOrderById = async (req, res) => {
   try {

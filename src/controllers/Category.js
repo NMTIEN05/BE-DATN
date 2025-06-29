@@ -1,13 +1,48 @@
     import Category from "../model/Category.js";
 import { categorySchema } from "../validate/Category.js";
 
-   export const getCategory = async (req, res) => {
+export const getCategory = async (req, res) => {
   try {
-    const category = await Category.find();
-    if (!category) {
-      return res.status(404).json({ message: "Category not found" });
+    // Lấy query parameters từ URL
+    let {
+      offset = "0",
+      limit = "10",
+      sortBy = "createdAt",   // sắp xếp theo thời gian tạo
+      order = "desc",         // mặc định giảm dần
+      name,                   // lọc theo tên nếu có
+    } = req.query;
+
+    // Ép kiểu
+    const offsetNumber = parseInt(offset, 10);
+    const limitNumber = parseInt(limit, 10);
+    const sortOrder = order === "desc" ? -1 : 1;
+
+    // Tạo bộ lọc nếu có lọc theo name
+    const filter = {};
+    if (name) {
+      // Dùng regex cho tìm kiếm gần đúng, không phân biệt hoa thường
+      filter.name = { $regex: name, $options: "i" };
     }
-    res.status(200).json(category);
+
+    // Truy vấn danh sách danh mục có phân trang và sắp xếp
+    const categories = await Category.find(filter)
+      .sort({ [sortBy]: sortOrder })
+      .skip(offsetNumber)
+      .limit(limitNumber);
+
+    // Đếm tổng số danh mục (phục vụ phân trang)
+    const total = await Category.countDocuments(filter);
+
+    // Trả kết quả
+    res.status(200).json({
+      success: true,
+      data: categories,
+      pagination: {
+        total,
+        offset: offsetNumber,
+        limit: limitNumber,
+      },
+    });
   } catch (error) {
     console.error("Error fetching categories:", error);
     res.status(500).json({ message: "Internal server error" });

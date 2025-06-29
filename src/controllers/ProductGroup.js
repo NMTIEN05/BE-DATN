@@ -5,10 +5,49 @@ import mongoose from "mongoose";
 // [GET] Lấy tất cả nhóm sản phẩm
 export const getAllProductGroups = async (req, res) => {
   try {
-    const groups = await ProductGroup.find({ deletedAt: null }).populate("categoryId");
-    res.json(groups);
+    let {
+      offset = "0",
+      limit = "10",
+      sortBy = "createdAt",
+      order = "desc",
+      categoryId,
+      search,
+    } = req.query;
+
+    const offsetNumber = parseInt(offset, 10);
+    const limitNumber = parseInt(limit, 10);
+    const sortOrder = order === "desc" ? -1 : 1;
+
+    // Tạo điều kiện lọc
+    const filter = { deletedAt: null };
+    if (categoryId) filter.categoryId = categoryId;
+    if (search) {
+      filter.name = { $regex: search, $options: "i" }; // tìm gần đúng
+    }
+
+    // Query dữ liệu
+    const groups = await ProductGroup.find(filter)
+      .sort({ [sortBy]: sortOrder })
+      .skip(offsetNumber)
+      .limit(limitNumber)
+      .populate("categoryId");
+
+    const total = await ProductGroup.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      data: groups,
+      pagination: {
+        total,
+        offset: offsetNumber,
+        limit: limitNumber,
+      },
+    });
   } catch (err) {
-    res.status(500).json({ message: "Lỗi lấy danh sách", error: err });
+    res.status(500).json({
+      message: "Lỗi lấy danh sách nhóm sản phẩm",
+      error: err.message,
+    });
   }
 };
 

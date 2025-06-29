@@ -7,16 +7,56 @@ import AttributeValue from "../model/AttributeValue.js";
 import mongoose from "mongoose";
 
 // [GET] /api/variants
-export const getAllVariants = async (req,res) => {
+export const getAllVariants = async (req, res) => {
   try {
-    const variants = await Variant.find({ deletedAt: null })
-        .populate("productId")
-  .populate("attributes.attributeId")
-  .populate("attributes.attributeValueId");
+    let {
+      offset = "0",
+      limit = "10",
+      sortBy = "createdAt",
+      order = "desc",
+      productId,
+      search,
+    } = req.query;
 
-    res.json(variants);
+    const offsetNumber = parseInt(offset, 10);
+    const limitNumber = parseInt(limit, 10);
+    const sortOrder = order === "desc" ? -1 : 1;
+
+    // Điều kiện lọc
+    const filter = { deletedAt: null };
+    if (productId) filter.productId = productId;
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { sku: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // Truy vấn
+    const variants = await Variant.find(filter)
+      .sort({ [sortBy]: sortOrder })
+      .skip(offsetNumber)
+      .limit(limitNumber)
+      .populate("productId")
+      .populate("attributes.attributeId")
+      .populate("attributes.attributeValueId");
+
+    const total = await Variant.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      data: variants,
+      pagination: {
+        total,
+        offset: offsetNumber,
+        limit: limitNumber,
+      },
+    });
   } catch (error) {
-    res.status(500).json({ message: "Lỗi lấy danh sách biến thể", error });
+    res.status(500).json({
+      message: "Lỗi lấy danh sách biến thể",
+      error: error.message,
+    });
   }
 };
 

@@ -2,14 +2,53 @@
 import AttributeValue from "../model/AttributeValue.js";
 
 // [GET] /api/attribute-values
-export const getAllAttributeValues = async (req,res) => {
+export const getAllAttributeValues = async (req, res) => {
   try {
-    const values = await AttributeValue.find({ deletedAt: null }).populate("attributeId");
-    res.json(values);
+    let {
+      offset = "0",
+      limit = "10",
+      sortBy = "createdAt",
+      order = "desc",
+      attributeId,
+      search,
+    } = req.query;
+
+    const offsetNumber = parseInt(offset, 10);
+    const limitNumber = parseInt(limit, 10);
+    const sortOrder = order === "desc" ? -1 : 1;
+
+    // Tạo bộ lọc
+    const filter = { deletedAt: null };
+    if (attributeId) filter.attributeId = attributeId;
+    if (search) {
+      filter.value = { $regex: search, $options: "i" };
+    }
+
+    const values = await AttributeValue.find(filter)
+      .sort({ [sortBy]: sortOrder })
+      .skip(offsetNumber)
+      .limit(limitNumber)
+      .populate("attributeId");
+
+    const total = await AttributeValue.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      data: values,
+      pagination: {
+        total,
+        offset: offsetNumber,
+        limit: limitNumber,
+      },
+    });
   } catch (error) {
-    res.status(500).json({ message: "Lỗi lấy danh sách giá trị thuộc tính", error });
+    res.status(500).json({
+      message: "Lỗi lấy danh sách giá trị thuộc tính",
+      error: error.message,
+    });
   }
 };
+
 
 // [GET] /api/attribute-values/:id
 export const getAttributeValueById = async (req, res) => {

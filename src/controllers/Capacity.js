@@ -4,13 +4,47 @@ import { capacitySchema } from "../validate/Capacity.js";
 // ✅ Lấy tất cả dung lượng
 export const getAllCapacities = async (req, res) => {
   try {
-    const capacities = await Capacity.find().sort({ createdAt: -1 });
-    res.status(200).json(capacities);
+    let {
+      offset = "0",
+      limit = "10",
+      sortBy = "createdAt",
+      order = "desc",
+      search,
+    } = req.query;
+
+    const offsetNumber = parseInt(offset, 10);
+    const limitNumber = parseInt(limit, 10);
+    const sortOrder = order === "desc" ? -1 : 1;
+
+    // Tạo bộ lọc
+    const filter = {};
+    if (search) {
+      filter.name = { $regex: search, $options: "i" };
+    }
+
+    // Truy vấn
+    const capacities = await Capacity.find(filter)
+      .sort({ [sortBy]: sortOrder })
+      .skip(offsetNumber)
+      .limit(limitNumber);
+
+    const total = await Capacity.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      data: capacities,
+      pagination: {
+        total,
+        offset: offsetNumber,
+        limit: limitNumber,
+      },
+    });
   } catch (error) {
     console.error("Lỗi khi lấy danh sách dung lượng:", error);
-    res.status(500).json({ message: "Lỗi server" });
+    res.status(500).json({ message: "Lỗi server", error: error.message });
   }
 };
+
 
 // ✅ Lấy dung lượng theo ID
 export const getCapacityById = async (req, res) => {
