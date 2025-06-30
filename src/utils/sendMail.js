@@ -27,5 +27,18 @@ const sendEmail = async (email, subject, options = {}) => {
     throw new Error("Error sending email: " + error.message);
   }
 };
+// utils/emailTemplates.js
+export const generatePasswordChangedEmail = () => {
+  return `
+     <div style="font-family: Arial, sans-serif; color: #333;">
+      <h2 style="color: #1890ff;">🔐 HolaPhone - Thay đổi mật khẩu thành công</h2>
+      <p>Xin chào,</p>
+      <p>Mật khẩu tài khoản của bạn vừa được thay đổi thành công.</p>
+      <p>Nếu bạn KHÔNG thực hiện thao tác này, vui lòng liên hệ với đội ngũ hỗ trợ của <strong>HolaPhone</strong> ngay lập tức để đảm bảo an toàn cho tài khoản của bạn.</p>
+      <hr />
+      <p style="font-size: 14px; color: #888;">Cảm ơn bạn đã tin tưởng sử dụng dịch vụ của HolaPhone!</p>
+    </div>
+  `;
+};
 
 export default sendEmail;

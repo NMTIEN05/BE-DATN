@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import UserModel from "../model/User.js";
 
-import  sendEmail  from "../utils/sendMail.js";
+import  sendEmail, { generatePasswordChangedEmail }  from "../utils/sendMail.js";
 // ✅ Đúng
 import { generateEmailVerificationCodeView } from "../views/auth.js";
  // tạo mới nếu chưa có
@@ -301,6 +301,11 @@ async function getUserById(req, res) {
     console.log("✅ Mật khẩu mới đã được cập nhật cho:", email);
 
     res.json({ message: "Đổi mật khẩu thành công!" });
+    // ✅ Gửi thông báo qua email
+  const html = generatePasswordChangedEmail();
+  await sendEmail(email, "Mật khẩu của bạn đã được thay đổi", { html });
+
+  res.json({ message: "Đổi mật khẩu thành công! Vui lòng kiểm tra email." });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
