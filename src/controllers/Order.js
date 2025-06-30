@@ -4,6 +4,9 @@ import OrderItem from "../model/OrderItem.js";
 import Cart from "../model/Cart.js";
 import CartItem from "../model/CartItem.js";
 import { orderSchema } from "../validate/Order.js"; // ✅ Thêm validate
+import UserModel from "../model/User.js";
+import { generateOrderConfirmationEmail, generateOrderStatusEmail } from "../utils/emailTemplates.js";
+import sendEmail from "../utils/sendMail.js";
 
 export const createOrder = async (req, res) => {
   try {
@@ -75,7 +78,24 @@ export const createOrder = async (req, res) => {
     // ✅ Xoá giỏ hàng
     await CartItem.deleteMany({ cartId: cart._id });
 
+    // ✅ Gửi email xác nhận
+    const user = await UserModel.findById(userId);
+    if (user && user.email) {
+      const html = generateOrderConfirmationEmail(
+        user.full_name || user.username,
+        order._id,
+        totalAmountServer
+      );
+      await sendEmail(
+        user.email,
+        "✅ Xác nhận đơn hàng từ HolaPhone",
+        { html }
+      );
+    }
+
+    // ✅ Trả phản hồi sau khi mọi thứ xong
     res.status(201).json(order);
+
   } catch (err) {
     console.error("❌ Lỗi khi tạo đơn hàng:", err);
     res.status(500).json({
@@ -84,7 +104,6 @@ export const createOrder = async (req, res) => {
     });
   }
 };
-
 
 
 export const getOrdersByUser = async (req, res) => {
@@ -172,12 +191,22 @@ export const getOrderById = async (req, res) => {
 export const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
+
     const order = await Order.findByIdAndUpdate(
       req.params.id,
       { status },
       { new: true }
     );
+
     if (!order) return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+
+    // 🔔 Gửi thông báo email nếu tìm được user
+    const user = await UserModel.findById(order.userId);
+    if (user && user.email) {
+      const html = generateOrderStatusEmail(user.full_name || user.username, order._id, status);
+      await sendEmail(user.email, "🔔 Cập nhật trạng thái đơn hàng", { html });
+    }
+
     res.json(order);
   } catch (err) {
     res.status(500).json({ message: "Lỗi cập nhật", error: err.message });
