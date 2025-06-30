@@ -6,7 +6,7 @@ const productSchema = new mongoose.Schema(
     title: { type: String, required: true }, // VD: iPhone 16 128GB
 
     // Đường dẫn SEO-friendly
-    slug: { type: String, required: true, unique: true }, // VD: iphone-16-128gb
+    slug: { type: String, required: true }, // VD: iphone-16-128gb
 
     capacity :{type: String , required: true}, 
     // Ảnh chính

@@ -1,33 +1,33 @@
 import OrderItem from "../model/OrderItem.js";
+import {
+  orderItemQuerySchema,
+  orderItemIdParamSchema,
+  orderItemByOrderIdSchema,
+} from "../validate/OrderItem.js";
 
 // 👉 Lấy tất cả OrderItem (admin)
 export const getAllOrderItems = async (req, res) => {
   try {
-    let {
-      offset = "0",
-      limit = "10",
-      sortBy = "createdAt",
-      order = "desc",
-      orderId,
-      productId,
-      variantId,
-    } = req.query;
+    const { error, value } = orderItemQuerySchema.validate(req.query, { abortEarly: false });
+    if (error) {
+      return res.status(400).json({
+        message: "Tham số truy vấn không hợp lệ",
+        errors: error.details.map((e) => e.message),
+      });
+    }
 
-    const offsetNumber = parseInt(offset, 10);
-    const limitNumber = parseInt(limit, 10);
+    const { offset, limit, sortBy, order, orderId, productId, variantId } = value;
     const sortOrder = order === "desc" ? -1 : 1;
 
-    // Tạo filter
     const filter = {};
     if (orderId) filter.orderId = orderId;
     if (productId) filter.productId = productId;
     if (variantId) filter.variantId = variantId;
 
-    // Truy vấn dữ liệu
     const items = await OrderItem.find(filter)
       .sort({ [sortBy]: sortOrder })
-      .skip(offsetNumber)
-      .limit(limitNumber)
+      .skip(offset)
+      .limit(limit)
       .populate("productId")
       .populate("variantId")
       .populate("orderId");
@@ -39,8 +39,8 @@ export const getAllOrderItems = async (req, res) => {
       data: items,
       pagination: {
         total,
-        offset: offsetNumber,
-        limit: limitNumber,
+        offset,
+        limit,
       },
     });
   } catch (err) {
@@ -51,14 +51,22 @@ export const getAllOrderItems = async (req, res) => {
   }
 };
 
-
 // 👉 Lấy OrderItem theo orderId
 export const getOrderItemsByOrderId = async (req, res) => {
   try {
+    const { error } = orderItemByOrderIdSchema.validate(req.params);
+    if (error) {
+      return res.status(400).json({
+        message: "orderId không hợp lệ",
+        errors: error.details.map((e) => e.message),
+      });
+    }
+
     const { orderId } = req.params;
     const items = await OrderItem.find({ orderId })
       .populate("productId")
       .populate("variantId");
+
     res.json(items);
   } catch (err) {
     res.status(500).json({ message: "Lỗi lấy OrderItem theo đơn hàng", error: err.message });
@@ -68,9 +76,20 @@ export const getOrderItemsByOrderId = async (req, res) => {
 // 👉 Xoá 1 OrderItem
 export const deleteOrderItem = async (req, res) => {
   try {
+    const { error } = orderItemIdParamSchema.validate(req.params);
+    if (error) {
+      return res.status(400).json({
+        message: "ID không hợp lệ",
+        errors: error.details.map((e) => e.message),
+      });
+    }
+
     const { id } = req.params;
     const deleted = await OrderItem.findByIdAndDelete(id);
-    if (!deleted) return res.status(404).json({ message: "Không tìm thấy OrderItem" });
+    if (!deleted) {
+      return res.status(404).json({ message: "Không tìm thấy OrderItem" });
+    }
+
     res.json({ message: "Đã xoá OrderItem" });
   } catch (err) {
     res.status(500).json({ message: "Lỗi xoá OrderItem", error: err.message });

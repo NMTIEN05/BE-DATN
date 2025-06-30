@@ -1,12 +1,19 @@
+import mongoose from "mongoose";
 import Cart from "../model/Cart.js";
 import CartItem from "../model/CartItem.js";
 import Variant from "../model/Variant.js";
 import User from "../model/User.js";
 
-import mongoose from "mongoose";
+import { addToCartSchema, updateCartItemSchema } from "../validate/Cart.js";
 
+// ✅ Thêm sản phẩm vào giỏ
 export const addToCart = async (req, res) => {
   try {
+    const { error } = addToCartSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+
     const userId = req.user?.id;
     if (!userId) return res.status(400).json({ message: "Thiếu thông tin người dùng" });
 
@@ -20,11 +27,7 @@ export const addToCart = async (req, res) => {
     const variant = await Variant.findById(variantId);
     if (!variant) return res.status(404).json({ message: "Không tìm thấy biến thể" });
 
-    let cartItem = await CartItem.findOne({
-      cartId: cart._id,
-      productId,
-      variantId,
-    });
+    let cartItem = await CartItem.findOne({ cartId: cart._id, productId, variantId });
 
     if (cartItem) {
       cartItem.quantity += quantity;
@@ -45,6 +48,7 @@ export const addToCart = async (req, res) => {
   }
 };
 
+// ✅ Lấy giỏ hàng của người dùng
 export const getCart = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -62,8 +66,14 @@ export const getCart = async (req, res) => {
   }
 };
 
+// ✅ Cập nhật số lượng sản phẩm trong giỏ
 export const updateCartItem = async (req, res) => {
   try {
+    const { error } = updateCartItemSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+
     const userId = req.user?.id;
     const { itemId } = req.params;
     const { quantity } = req.body;
@@ -85,6 +95,7 @@ export const updateCartItem = async (req, res) => {
   }
 };
 
+// ✅ Xoá 1 item trong giỏ
 export const removeCartItem = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -103,6 +114,7 @@ export const removeCartItem = async (req, res) => {
   }
 };
 
+// ✅ Xoá toàn bộ giỏ hàng
 export const clearCart = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -116,6 +128,8 @@ export const clearCart = async (req, res) => {
     res.status(500).json({ message: "Lỗi xoá giỏ hàng", error: err.message });
   }
 };
+
+// ✅ Lấy thông tin cart item kèm user
 export const getCartItemWithUser = async (req, res) => {
   try {
     const { itemId } = req.params;
