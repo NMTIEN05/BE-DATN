@@ -242,6 +242,70 @@ async function getUserById(req, res) {
       res.status(500).json({ message: "Lỗi server khi đăng nhập" });
     }
   }
+ async function forgotPassword(req, res) {
+  try {
+    const { email } = req.body;
+
+    const user = await UserModel.findOne({ email });
+    if (!user) return res.status(404).json({ message: "Email không tồn tại" });
+
+    const code = generateVerificationCode();
+    user.emailResetCode = code;
+    user.emailResetExpires = Date.now() + 15 * 60 * 1000; // 15 phút
+
+    await user.save();
+
+    const html = `<p>Mã xác minh đặt lại mật khẩu của bạn là: <strong>${code}</strong></p>`;
+    await sendEmail(email, "Mã đặt lại mật khẩu", { html });
+
+    res.json({ message: "Đã gửi mã xác minh tới email của bạn" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+// [POST] /auth/reset-password
+ async function resetPassword(req, res) {
+  try {
+    const { email, code, newPassword } = req.body;
+
+    const user = await UserModel.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "Email không tồn tại" });
+    }
+
+    // Log debug để kiểm tra
+    console.log("🔐 Nhập:", { email, code });
+    console.log("🔎 DB:", {
+      codeInDB: user.emailResetCode,
+      expires: user.emailResetExpires,
+      now: Date.now(),
+    });
+
+    const isValid =
+      user.emailResetCode === code &&
+      user.emailResetExpires &&
+      Date.now() < user.emailResetExpires;
+
+    if (!isValid) {
+      return res.status(400).json({ message: "Mã không hợp lệ hoặc đã hết hạn" });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.emailResetCode = undefined;
+    user.emailResetExpires = undefined;
+
+    await user.save();
+
+    console.log("✅ Mật khẩu mới đã được cập nhật cho:", email);
+
+    res.json({ message: "Đổi mật khẩu thành công!" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
 
 
-  export { register, verifyEmailCode , updateUser, getUserById, getAllUsers, login, deleteUser };
+
+  export { register,forgotPassword,resetPassword, verifyEmailCode , updateUser, getUserById, getAllUsers, login, deleteUser };

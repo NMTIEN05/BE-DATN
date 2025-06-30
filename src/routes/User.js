@@ -1,5 +1,5 @@
 import express from "express";
-import { deleteUser, getAllUsers, getUserById, login, register, updateUser, verifyEmailCode } from "../controllers/User.js";
+import { deleteUser,forgotPassword,resetPassword, getAllUsers, getUserById, login, register, updateUser, verifyEmailCode } from "../controllers/User.js";
 import { authenticate, requireAdmin } from "../middlewares/auth.js";
 
 
@@ -9,6 +9,8 @@ const router = express.Router();
 router.post("/register", register  )
 router.post("/login", login  )
 router.post("/email-code", verifyEmailCode);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
 // Public (hoặc đã login)
 router.get("/", authenticate, getAllUsers);
 router.get("/:id", authenticate, getUserById);

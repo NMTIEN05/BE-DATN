@@ -11,6 +11,8 @@ const userSchema = new mongoose.Schema({
   isVerified: { type: Boolean, default: false },
   emailVerifyCode: String,
   emailVerifyExpires: Date,
+  emailResetCode: String,
+  emailResetExpires: Date,
 
     role: {
         type: String,
