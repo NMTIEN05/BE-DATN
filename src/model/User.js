@@ -7,6 +7,11 @@ const userSchema = new mongoose.Schema({
     phone: { type: String, required: true, unique: true },
     full_name: { type: String, required: true },
     address: { type: String, default: "" },
+    // Xác minh email
+  isVerified: { type: Boolean, default: false },
+  emailVerifyCode: String,
+  emailVerifyExpires: Date,
+
     role: {
         type: String,
         enum: ["admin", "user", "staff"], // Thêm quyền mới vào đây
