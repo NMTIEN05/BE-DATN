@@ -1,5 +1,7 @@
 import Product from "../model/Product.js";
 import Variant from "../model/Variant.js";
+import { productSchema } from "../validate/Product.js";
+
 import mongoose from "mongoose";
 
 
@@ -14,21 +16,27 @@ export const getAllProducts = async (req, res) => {
       groupId,
       categoryId,
       search,
+      deleted,
     } = req.query;
 
     const offsetNumber = parseInt(offset, 10);
     const limitNumber = parseInt(limit, 10);
     const sortOrder = order === "desc" ? -1 : 1;
 
-    // Tạo điều kiện lọc
-    const filter = { deletedAt: null };
+    // ⚠️ Lọc deletedAt theo giá trị deleted
+    const filter = {};
+    if (deleted === "true") {
+      filter.deletedAt = { $ne: null }; // sản phẩm đã bị xoá mềm
+    } else {
+      filter.deletedAt = null; // sản phẩm chưa bị xoá
+    }
+
     if (groupId) filter.groupId = groupId;
     if (categoryId) filter.categoryId = categoryId;
     if (search) {
-      filter.title = { $regex: search, $options: "i" }; // tìm theo tên gần đúng
+      filter.title = { $regex: search, $options: "i" };
     }
 
-    // Query sản phẩm
     const products = await Product.find(filter)
       .sort({ [sortBy]: sortOrder })
       .skip(offsetNumber)
@@ -43,7 +51,6 @@ export const getAllProducts = async (req, res) => {
         },
       });
 
-    // Tổng số sản phẩm (phục vụ phân trang)
     const total = await Product.countDocuments(filter);
 
     res.status(200).json({
@@ -88,17 +95,15 @@ export const getProductById = async (req, res) => {
     res.status(500).json({ message: "Lỗi lấy sản phẩm", error });
   }
 };
-
-
-
-// [POST] /api/products
-export const createProduct = async (req,res) => {
+export const createProduct = async (req, res) => {
   try {
-    const { title, slug, priceDefault, groupId, categoryId  } = req.body;
-
-    // ✅ Validate đơn giản
-    if (!title || !slug || !priceDefault || !groupId || !categoryId) {
-      return res.status(400).json({ message: "Thiếu thông tin bắt buộc" });
+    // ✅ Validate dữ liệu
+    const { error } = productSchema.validate(req.body, { abortEarly: false });
+    if (error) {
+      return res.status(400).json({
+        message: "Dữ liệu không hợp lệ",
+        errors: error.details.map((err) => err.message),
+      });
     }
 
     const product = new Product(req.body);
@@ -108,10 +113,17 @@ export const createProduct = async (req,res) => {
     res.status(400).json({ message: "Tạo sản phẩm thất bại", error });
   }
 };
-
-// [PUT] /api/products/:id
-export const updateProduct = async (req,res) => {
+export const updateProduct = async (req, res) => {
   try {
+    // ✅ Validate dữ liệu
+    const { error } = productSchema.validate(req.body, { abortEarly: false });
+    if (error) {
+      return res.status(400).json({
+        message: "Dữ liệu không hợp lệ",
+        errors: error.details.map((err) => err.message),
+      });
+    }
+
     const updated = await Product.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
     })
@@ -133,7 +145,6 @@ export const updateProduct = async (req,res) => {
     res.status(400).json({ message: "Cập nhật sản phẩm thất bại", error });
   }
 };
-
 // [DELETE] /api/products/:id (soft delete)
 export const deleteProduct = async (req,res) => {
   try {
@@ -155,6 +166,52 @@ export const deleteProduct = async (req,res) => {
     res.status(500).json({ message: "Xoá sản phẩm thất bại", error });
   }
 };
+export const hardDeleteProduct = async (req, res) => {
+  try {
+    const deleted = await Product.findByIdAndDelete(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
+    }
+
+    res.json({ message: "Đã xoá sản phẩm vĩnh viễn (hard delete)" });
+  } catch (error) {
+    res.status(500).json({ message: "Xoá cứng thất bại", error });
+  }
+};
+// [DELETE] /api/product/hard-all
+// export const hardDeleteAllProducts = async (req, res) => {
+//   try {
+//     const result = await Product.deleteMany({ deletedAt: { $ne: null } });
+
+//     res.json({
+//       message: "Đã xoá tất cả sản phẩm bị xoá mềm",
+//       deletedCount: result.deletedCount,
+//     });
+//   } catch (error) {
+//     console.error("❌ Lỗi xoá all:", error);
+//     res.status(500).json({ message: "Lỗi xoá tất cả sản phẩm đã xoá", error });
+//   }
+// };
+export const restoreProduct = async (req, res) => {
+  try {
+    const restored = await Product.findByIdAndUpdate(
+      req.params.id,
+      { deletedAt: null, deletedBy: null },
+      { new: true }
+    );
+
+    if (!restored) {
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
+    }
+
+    res.json({ message: "Khôi phục sản phẩm thành công", data: restored });
+  } catch (error) {
+    res.status(500).json({ message: "Khôi phục thất bại", error });
+  }
+};
+
+
 // [GET] /api/products/group/:groupId
 export const getProductsByGroup = async (req,res) => {
   try {

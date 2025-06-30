@@ -1,6 +1,7 @@
 import ProductGroup from "../model/ProductGroup.js";
 import Product from "../model/Product.js";
 import mongoose from "mongoose";
+import { productGroupSchema } from "../validate/ProductGroup.js";
 
 // [GET] Lấy tất cả nhóm sản phẩm
 export const getAllProductGroups = async (req, res) => {
@@ -76,6 +77,14 @@ export const getProductGroupBySlug = async (req, res) => {
 // [POST] Tạo nhóm mới
 export const createProductGroup = async (req, res) => {
   try {
+    const { error } = productGroupSchema.validate(req.body, { abortEarly: false });
+    if (error) {
+      return res.status(400).json({
+        message: "Dữ liệu không hợp lệ",
+        errors: error.details.map((err) => err.message),
+      });
+    }
+
     const newGroup = new ProductGroup(req.body);
     await newGroup.save();
     res.status(201).json(newGroup);
@@ -87,6 +96,14 @@ export const createProductGroup = async (req, res) => {
 // [PUT] Cập nhật nhóm
 export const updateProductGroup = async (req, res) => {
   try {
+    const { error } = productGroupSchema.validate(req.body, { abortEarly: false });
+    if (error) {
+      return res.status(400).json({
+        message: "Dữ liệu không hợp lệ",
+        errors: error.details.map((err) => err.message),
+      });
+    }
+
     const updated = await ProductGroup.findByIdAndUpdate(
       req.params.id,
       req.body,
