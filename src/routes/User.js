@@ -1,5 +1,5 @@
 import express from "express";
-import { deleteUser,forgotPassword,resetPassword, getAllUsers, getUserById, login, register, updateUser, verifyEmailCode } from "../controllers/User.js";
+import { deleteUser,forgotPassword,resetPassword, getAllUsers, getUserById, login, register, updateUser, verifyEmailCode, changePassword } from "../controllers/User.js";
 import { authenticate, requireAdmin } from "../middlewares/auth.js";
 
 
@@ -11,6 +11,7 @@ router.post("/login", login  )
 router.post("/email-code", verifyEmailCode);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
+router.post("/change-password", authenticate,changePassword)
 // Public (hoặc đã login)
 router.get("/", authenticate, getAllUsers);
 router.get("/:id", authenticate, getUserById);
