@@ -188,19 +188,56 @@ export const getOrderById = async (req, res) => {
   }
 };
 
+const ALLOWED_STATUS = [
+  "pending",
+  "processing",
+  "ready_to_ship",
+  "shipped",
+  "delivered",
+  "return_requested",
+  "returned",
+  "cancelled"
+];
+
+// Trạng thái cho phép tiếp theo từ mỗi trạng thái
+const STATUS_FLOW = {
+  pending: ["processing", "cancelled"],
+  processing: ["ready_to_ship", "cancelled"],
+  ready_to_ship: ["shipped", "cancelled"],
+  shipped: ["delivered", "return_requested"],
+  delivered: ["return_requested"],
+  return_requested: ["returned", "cancelled"],
+  returned: [],
+  cancelled: []
+};
+
 export const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
+    const { id } = req.params;
 
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    );
+    if (!ALLOWED_STATUS.includes(status)) {
+      return res.status(400).json({ message: "Trạng thái không hợp lệ" });
+    }
 
+    const order = await Order.findById(id);
     if (!order) return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
 
-    // 🔔 Gửi thông báo email nếu tìm được user
+    const currentStatus = order.status;
+
+    // Nếu không cho phép chuyển từ currentStatus → status mới
+    const allowedNextStatuses = STATUS_FLOW[currentStatus] || [];
+    if (!allowedNextStatuses.includes(status)) {
+      return res.status(400).json({
+        message: `Không thể chuyển từ '${currentStatus}' sang '${status}'`
+      });
+    }
+
+    // Cập nhật
+    order.status = status;
+    await order.save();
+
+    // Gửi email
     const user = await UserModel.findById(order.userId);
     if (user && user.email) {
       const html = generateOrderStatusEmail(user.full_name || user.username, order._id, status);
@@ -212,6 +249,7 @@ export const updateOrderStatus = async (req, res) => {
     res.status(500).json({ message: "Lỗi cập nhật", error: err.message });
   }
 };
+
 
 export const deleteOrder = async (req, res) => {
   try {
