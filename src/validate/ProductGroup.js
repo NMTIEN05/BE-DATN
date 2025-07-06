@@ -15,11 +15,7 @@ export const productGroupSchema = Joi.object({
     "any.required": "Slug là bắt buộc",
   }),
    
-  imageUrl: Joi.array()
-    .items(Joi.string().uri().messages({ "string.uri": "URL ảnh không hợp lệ" }))
-    .min(1)
-    .required()
-    .messages({
+  imageUrl: Joi.array().items(Joi.string().uri()).min(1).required().messages({
       "array.base": "Ảnh phải là một mảng",
       "array.min": "Cần ít nhất 1 ảnh",
       "any.required": "Ảnh là bắt buộc",
