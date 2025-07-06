@@ -7,11 +7,11 @@ const productGroupSchema = new mongoose.Schema(
     slug: { type: String, required: true, unique: true }, // VD: iphone-16
     capacity:{type: String, required: true, unique: true},
 
-    imageUrl: {
-      type: [String], // Mảng URL ảnh
-      required: true,
-      default: [],
-    },
+     imageUrl: {
+  type: [String],  // Mảng các URL ảnh
+  required: true,  // hoặc false nếu không bắt buộc
+  default: [],
+},
 
     description: { type: String, default: "" },
     shortDescription: { type: String, default: "" },

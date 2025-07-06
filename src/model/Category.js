@@ -8,7 +8,15 @@ const categorySchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-      imageUrl: { type: String, required: true },
+      deletedAt: {
+      type: Date,
+      default: null,
+    },
+      imageUrl: {
+  type: [String],  // Mảng các URL ảnh
+  required: true,  // hoặc false nếu không bắt buộc
+  default: [],
+},
 },
 { timestamps: true, versionKey: false }
     

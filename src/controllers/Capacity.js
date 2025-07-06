@@ -131,3 +131,44 @@ export const deleteCapacity = async (req, res) => {
     res.status(500).json({ message: "Lỗi server" });
   }
 };
+export const getDeletedCapacities = async (req, res) => {
+  try {
+    const data = await Capacity.find({ deletedAt: { $ne: null } });
+    res.json({ data });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+// [PUT] /capacities/:id/restore
+export const restoreCapacity = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const restored = await Capacity.findByIdAndUpdate(
+      id,
+      { deletedAt: null },
+      { new: true }
+    );
+
+    if (!restored) {
+      return res.status(404).json({ message: "Không tìm thấy dung lượng để khôi phục." });
+    }
+
+    res.json({ message: "Khôi phục dung lượng thành công", data: restored });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+// [DELETE] /capacities/:id/force
+export const forceDeleteCapacity = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await Capacity.findByIdAndDelete(id);
+    if (!deleted) {
+      return res.status(404).json({ message: "Không tìm thấy dung lượng để xoá vĩnh viễn." });
+    }
+    res.json({ message: "Xoá vĩnh viễn dung lượng thành công" });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};

@@ -85,13 +85,20 @@ export const createProductGroup = async (req, res) => {
       });
     }
 
-    const newGroup = new ProductGroup(req.body);
+    const body = {
+      ...req.body,
+      imageUrl: Array.isArray(req.body.imageUrl) ? req.body.imageUrl : [req.body.imageUrl],
+    };
+
+    const newGroup = new ProductGroup(body);
     await newGroup.save();
+
     res.status(201).json(newGroup);
   } catch (err) {
     res.status(400).json({ message: "Lỗi tạo nhóm", error: err });
   }
 };
+
 
 // [PUT] Cập nhật nhóm
 export const updateProductGroup = async (req, res) => {
@@ -104,16 +111,23 @@ export const updateProductGroup = async (req, res) => {
       });
     }
 
+    const body = {
+      ...req.body,
+      imageUrl: Array.isArray(req.body.imageUrl) ? req.body.imageUrl : [req.body.imageUrl],
+    };
+
     const updated = await ProductGroup.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      body,
       { new: true }
     ).populate("categoryId");
+
     res.json(updated);
   } catch (err) {
     res.status(400).json({ message: "Lỗi cập nhật", error: err });
   }
 };
+
 
 // [DELETE] Xoá mềm nhóm
 export const deleteProductGroup = async (req, res) => {
@@ -146,5 +160,51 @@ export const getProductsByGroupId = async (req, res) => {
   } catch (err) {
     console.error("❌ Lỗi khi lấy sản phẩm theo group:", err);
     res.status(500).json({ message: "Lỗi server", error: err.message });
+  }
+};
+// controllers/ProductGroup.js
+
+export const getDeletedProductGroups = async (req, res) => {
+  try {
+    const deletedGroups = await ProductGroup.find({ deletedAt: { $ne: null } }).populate("categoryId");
+    res.json({ data: deletedGroups });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi lấy nhóm sản phẩm", error: error.message });
+  }
+};
+
+// ♻️ Khôi phục nhóm sản phẩm
+export const restoreProductGroup = async (req, res) => {
+  try {
+    const group = await ProductGroup.findByIdAndUpdate(
+      req.params.id,
+      { deletedAt: null },
+      { new: true }
+    );
+    if (!group) return res.status(404).json({ message: "Không tìm thấy nhóm" });
+    res.json(group);
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi khi khôi phục", error: err.message });
+  }
+};
+
+// 🗑️ Xoá cứng 1 nhóm
+export const forceDeleteProductGroup = async (req, res) => {
+  try {
+    const deleted = await ProductGroup.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ message: "Không tìm thấy nhóm" });
+    res.json({ message: "Đã xoá vĩnh viễn" });
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi xoá vĩnh viễn", error: err.message });
+  }
+};
+
+// 🧹 Xoá tất cả nhóm đã xoá mềm
+export const forceDeleteAllProductGroups = async (req, res) => {
+  try {
+    const result = await ProductGroup.deleteMany({ deletedAt: { $ne: null } });
+    res.json({ message: `Đã xoá ${result.deletedCount} nhóm đã xoá mềm` });
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi xoá tất cả", error: err.message });
   }
 };

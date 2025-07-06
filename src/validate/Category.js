@@ -9,7 +9,7 @@ export const categorySchema = Joi.object({
   description: Joi.string().allow("").max(500).messages({
     "string.max": "Mô tả không được vượt quá 500 ký tự",
   }),
-  imageUrl: Joi.string().uri().required().messages({
+ imageUrl: Joi.array().items(Joi.string().uri()).min(1).required().messages({
     "string.empty": "URL ảnh không được để trống",
     "any.required": "Ảnh là bắt buộc",
     "string.uri": "URL ảnh không hợp lệ",
