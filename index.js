@@ -18,6 +18,9 @@ connectDB();
 // API routes
 app.use("/api", router);
 
+const bannerRoutes = require('./src/routes/banner.js');
+app.use('/api/banners', bannerRoutes);
+
 
 setupSwagger(app);
 // Khởi động server
