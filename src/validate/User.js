@@ -26,14 +26,26 @@ export const userSchema = Joi.object({
     "string.min": "Họ tên phải có ít nhất 2 ký tự",
   }),
 
-  role: Joi.string().valid("user", "admin", "staff").default("user").messages({
-    "any.only": "Vai trò không hợp lệ (phải là admin, user, hoặc staff)",
-  }),
+  role: Joi.string()
+    .valid("user", "admin", "staff")
+    .default("user")
+    .messages({
+      "any.only": "Vai trò không hợp lệ (phải là admin, user hoặc staff)",
+    }),
   isActive: Joi.boolean().default(true),
 });
 
 
 export const updateUserSchema = Joi.object({
-  role: Joi.string().valid("admin", "staff", "user").required(),
-  isActive: Joi.boolean().required(),
+  role: Joi.string().valid("admin", "staff", "user"),
+  isActive: Joi.boolean(),
+});
+export const changePasswordSchema = Joi.object({
+  oldPassword: Joi.string().required().messages({
+    "string.empty": "Mật khẩu cũ không được để trống",
+  }),
+  newPassword: Joi.string().min(6).required().messages({
+    "string.min": "Mật khẩu mới phải có ít nhất 6 ký tự",
+    "string.empty": "Mật khẩu mới không được để trống",
+  }),
 });

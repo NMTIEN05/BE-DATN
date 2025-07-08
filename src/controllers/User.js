@@ -8,14 +8,14 @@ import { generateEmailVerificationCodeView } from "../views/auth.js";
  // tạo mới nếu chưa có
 // Sửa đúng: dùng 2 schema riêng biệt
 import { registerSchema, loginSchema } from "../validate/Auth.js";
-import { updateUserSchema } from "../validate/User.js";
+import { updateUserSchema,changePasswordSchema } from "../validate/User.js";
 
 // [POST] Đăng ký user
 
 // [PUT] Cập nhật user
 async function updateUser(req, res) {
   try {
-    const { error } = updateUserSchema.validate(req.body);
+    const { error } = changePasswordSchema.validate(req.body);
     if (error) return res.status(400).json({ message: error.details[0].message });
 
     const { id } = req.params;
@@ -119,37 +119,33 @@ const generateVerificationCode = () =>
 async function register(req, res) {
   try {
     const { error } = registerSchema.validate(req.body);
-    if (error)
-      return res.status(400).json({ message: error.details[0].message });
+    if (error) return res.status(400).json({ message: error.details[0].message });
 
-    const { username, full_name, email, password, phone, address, role } =
-      req.body;
+    const { username, full_name, email, password, phone, address, role } = req.body;
 
     const existingUser = await UserModel.findOne({ email });
 
-    if (existingUser) { 
+    const code = generateVerificationCode();
+
+    if (existingUser) {
       if (existingUser.isVerified) {
         return res.status(400).json({ message: "Email đã được sử dụng." });
       }
 
-      // ✅ Nếu user chưa xác minh → cập nhật mã mới
-      const code = generateVerificationCode();
+      // Cập nhật lại mã xác minh mới
       existingUser.emailVerifyCode = code;
-      existingUser.emailVerifyExpires = Date.now() + 15 * 60 * 1000; // 15 phút
+      existingUser.emailVerifyExpires = Date.now() + 15 * 60 * 1000;
       await existingUser.save();
 
       const html = generateEmailVerificationCodeView(code);
       await sendEmail(email, "Mã xác thực tài khoản", { html });
 
       return res.status(200).json({
-        message:
-          "Email đã tồn tại nhưng chưa xác minh. Mã xác thực mới đã được gửi.",
+        message: "Email đã tồn tại nhưng chưa xác minh. Mã xác minh mới đã được gửi.",
       });
     }
 
-    // ✅ Nếu chưa tồn tại → tạo user mới
     const hashedPassword = await bcrypt.hash(password, 10);
-    const code = generateVerificationCode();
 
     const userCreated = await UserModel.create({
       username,
@@ -175,42 +171,10 @@ async function register(req, res) {
     res.status(500).json({ message: error.message });
   }
 }
+
   // [POST] /auth/verify-email-code
  // ✅ Xác minh mã để đổi mật khẩu
-async function verifyEmailCode(req, res) {
-  try {
-    const { email, code } = req.body;
 
-    if (!email || !code) {
-      return res.status(400).json({ message: "Thiếu email hoặc mã xác minh" });
-    }
-
-    const user = await UserModel.findOne({ email });
-    if (!user) return res.status(404).json({ message: "Không tìm thấy người dùng" });
-
-    // ✅ Chỉ kiểm tra mã quên mật khẩu
-    if (!user.emailResetCode || !user.emailResetExpires) {
-      return res.status(400).json({ message: "Không có mã xác minh đang hoạt động" });
-    }
-
-    if (Date.now() > user.emailResetExpires) {
-      return res.status(400).json({ message: "Mã xác minh đã hết hạn" });
-    }
-
-    if (user.emailResetCode !== code) {
-      return res.status(400).json({ message: "Mã xác minh không đúng" });
-    }
-
-    // Mã hợp lệ → xoá để không dùng lại
-    user.emailResetCode = null;
-    user.emailResetExpires = null;
-    await user.save();
-
-    res.json({ message: "✅ Mã xác minh hợp lệ, cho phép đổi mật khẩu!" });
-  } catch (error) {
-    res.status(500).json({ message: "Lỗi khi xác minh mã" });
-  }
-}
 
   // [POST] /auth/login
   async function login(req, res) {
@@ -260,7 +224,7 @@ async function verifyEmailCode(req, res) {
   }
 }
 
- async function forgotPassword(req, res) {
+async function forgotPassword(req, res) {
   try {
     const { email } = req.body;
 
@@ -268,8 +232,8 @@ async function verifyEmailCode(req, res) {
     if (!user) return res.status(404).json({ message: "Email không tồn tại" });
 
     const code = generateVerificationCode();
-    user.emailResetCode = code;
-    user.emailResetExpires = Date.now() + 15 * 60 * 1000; // 15 phút
+    user.emailVerifyCode = code;
+    user.emailVerifyExpires = Date.now() + 15 * 60 * 1000;
 
     await user.save();
 
@@ -282,81 +246,126 @@ async function verifyEmailCode(req, res) {
   }
 }
 
+async function verifyEmailCode(req, res) {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({ message: "Thiếu email hoặc mã xác minh" });
+    }
+
+    const user = await UserModel.findOne({ email });
+    if (!user) return res.status(404).json({ message: "Không tìm thấy người dùng" });
+
+    if (!user.emailVerifyCode || !user.emailVerifyExpires) {
+      return res.status(400).json({ message: "Không có mã xác minh đang hoạt động" });
+    }
+
+    if (Date.now() > user.emailVerifyExpires) {
+      return res.status(400).json({ message: "Mã xác minh đã hết hạn" });
+    }
+
+    if (user.emailVerifyCode !== code) {
+      return res.status(400).json({ message: "Mã xác minh không đúng" });
+    }
+
+    // Nếu là đăng ký chưa xác minh → xác minh
+    if (!user.isVerified) {
+      user.isVerified = true;
+    }
+
+    // Dọn mã
+    user.emailVerifyCode = undefined;
+    user.emailVerifyExpires = undefined;
+
+    await user.save();
+
+    res.json({ message: "✅ Mã xác minh hợp lệ!" });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi khi xác minh mã" });
+  }
+}
+// [POST] /auth/verify-register-code
+async function verifyRegisterCode(req, res) {
+  try {
+    const { email, code } = req.body;
+    const user = await UserModel.findOne({ email });
+
+    if (!user) return res.status(404).json({ message: "Không tìm thấy người dùng" });
+
+    // Kiểm tra mã xác thực
+    if (!user.emailVerifyCode || !user.emailVerifyExpires)
+      return res.status(400).json({ message: "Không có mã xác minh đang hoạt động" });
+
+    if (Date.now() > user.emailVerifyExpires)
+      return res.status(400).json({ message: "Mã xác minh đã hết hạn" });
+
+    if (user.emailVerifyCode !== code)
+      return res.status(400).json({ message: "Mã xác minh không đúng" });
+
+    // Đúng → xác minh và xóa mã
+    user.isVerified = true;
+    user.emailVerifyCode = undefined;
+    user.emailVerifyExpires = undefined;
+    await user.save();
+
+    return res.json({ message: "Xác minh tài khoản thành công!" });
+  } catch (error) {
+    return res.status(500).json({ message: "Lỗi xác minh tài khoản" });
+  }
+}
+
+
 // [POST] /auth/reset-password
 async function resetPassword(req, res) {
   try {
     const { email, newPassword } = req.body;
 
     const user = await UserModel.findOne({ email });
+    if (!user) return res.status(404).json({ message: "Email không tồn tại" });
 
-    if (!user) {
-      return res.status(404).json({ message: "Email không tồn tại" });
+    // Không cho đổi nếu chưa xác minh mã
+    if (user.emailVerifyCode || user.emailVerifyExpires) {
+      return res.status(400).json({ message: "Vui lòng xác minh mã trước khi đổi mật khẩu." });
     }
 
-    // Cập nhật mật khẩu
     user.password = await bcrypt.hash(newPassword, 10);
-
-    // Xoá mã xác thực nếu còn (phòng trường hợp gọi sót)
-    user.emailResetCode = undefined;
-    user.emailResetExpires = undefined;
-
     await user.save();
 
-    console.log("✅ Mật khẩu mới đã được cập nhật cho:", email);
-
-    // Gửi email thông báo
     const html = generatePasswordChangedEmail();
     await sendEmail(email, "Mật khẩu của bạn đã được thay đổi", { html });
 
-    res.json({ message: "Đổi mật khẩu thành công! Vui lòng kiểm tra email." });
+    res.json({ message: "Đổi mật khẩu thành công!" });
   } catch (error) {
-    console.error("❌ Lỗi resetPassword:", error);
     res.status(500).json({ message: error.message });
   }
 }
-async function changePassword(req, res) {
-  console.log("🟡 Bắt đầu xử lý đổi mật khẩu");
 
+async function changePassword(req, res) {
   try {
+    const { error } = changePasswordSchema.validate(req.body);
+    if (error) return res.status(400).json({ message: error.details[0].message });
+
     const { oldPassword, newPassword } = req.body;
     const userId = req.user?.id;
 
-    if (!userId) {
-      console.warn("⚠️ Không có userId từ token");
-      return res.status(401).json({ message: "Chưa đăng nhập" });
-    }
+    if (!userId) return res.status(401).json({ message: 'Chưa đăng nhập' });
 
     const user = await UserModel.findById(userId);
-    if (!user) {
-      console.warn("⚠️ Không tìm thấy user:", userId);
-      return res.status(404).json({ message: "Không tìm thấy người dùng" });
-    }
+    if (!user) return res.status(404).json({ message: 'Không tìm thấy người dùng' });
 
     const isMatch = await bcrypt.compare(oldPassword, user.password);
-    if (!isMatch) {
-      console.warn("⚠️ Mật khẩu cũ không đúng");
-      return res.status(400).json({ message: "Mật khẩu cũ không đúng" });
-    }
+    if (!isMatch) return res.status(400).json({ message: 'Mật khẩu cũ không đúng' });
 
-    // Cập nhật mật khẩu
     user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
-    // Gửi email thông báo (bọc trong try/catch riêng)
-    try {
-      const html = generatePasswordChangedEmail();
-      console.log("📨 Gửi email đến:", user.email);
-      await sendEmail(user.email, "Mật khẩu của bạn đã được thay đổi", { html });
-      console.log("✅ Email thông báo đã được gửi");
-    } catch (mailError) {
-      console.error("❌ Gửi email thất bại:", mailError);
-      // Không return lỗi, vì đổi mật khẩu vẫn thành công
-    }
 
-    console.log(`✅ Người dùng ${user.email || user._id} đã đổi mật khẩu`);
-    res.json({ message: "Đổi mật khẩu thành công!" });
+    const html = generatePasswordChangedEmail();
+    await sendEmail(user.email, 'Mật khẩu của bạn đã được thay đổi', { html });
+
+    res.json({ message: 'Đổi mật khẩu thành công!' });
   } catch (error) {
-    console.error("❌ Lỗi khi đổi mật khẩu:", error);
-    res.status(500).json({ message: "Lỗi máy chủ" });
+    res.status(500).json({ message: 'Lỗi máy chủ' });
   }
 }
 
@@ -365,4 +374,6 @@ async function changePassword(req, res) {
 
 
 
-  export { register,forgotPassword,changePassword,resetPassword, verifyEmailCode , updateUser, getUserById, getAllUsers, login, deleteUser };
+
+
+  export { register,forgotPassword,changePassword,resetPassword,verifyRegisterCode, verifyEmailCode , updateUser, getUserById, getAllUsers, login, deleteUser };
