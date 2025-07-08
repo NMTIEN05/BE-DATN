@@ -12,13 +12,7 @@ import cartRoutes from "../routes/Cart.js";
 import orderRoutes from "../routes/Order.js";
 import orderItemRoutes from "../routes/OrderItem.js";
 
-
-
-
-
-
 const router = express.Router();
-
 // Kiểm tra kết nối frontend
 router.get("/ping", (req, res) => {
   console.log("Frontend đã kết nối thành công");
