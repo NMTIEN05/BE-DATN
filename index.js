@@ -3,7 +3,7 @@ import cors from "cors";
 import connectDB from "./src/configs/db.js"; // Đảm bảo import đúng connectDB
 import router from "./src/routes/index.js";
 import dotenv from "dotenv";
-
+import wishlistRoutes from './src/routes/wishlist.js';
 import setupSwagger from "./src/configs/swaggerConfig.js";
 
 // Load biến môi trường
@@ -20,6 +20,7 @@ app.use("/api", router);
 
 const bannerRoutes = require('./src/routes/banner.js');
 app.use('/api/banners', bannerRoutes);
+app.use('/api/wishlist', wishlistRoutes);
 
 
 setupSwagger(app);

@@ -19,7 +19,7 @@
 		"bcrypt": "^5.1.1",
 		"bcryptjs": "^3.0.2",
 		"cors": "^2.8.5",
-		"dotenv": "^16.5.0",
+		"dotenv": "^16.6.1",
 		"express": "^4.21.2",
 		"expressjs": "^1.0.1",
 		"fs": "^0.0.1-security",
