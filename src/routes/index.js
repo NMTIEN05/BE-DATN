@@ -11,6 +11,8 @@ import userRoutes from "../routes/User.js"; // Đã thêm dòng này từ nhánh
 import cartRoutes from "../routes/Cart.js";
 import orderRoutes from "../routes/Order.js";
 import orderItemRoutes from "../routes/OrderItem.js";
+import bannerRoutes from "../routes/banner.js"; // Đã thêm dòng này từ nhánh mới
+
 
 const router = express.Router();
 // Kiểm tra kết nối frontend
@@ -29,7 +31,9 @@ router.use("/variants", variantRoutes);
 router.use("/attributes", attributeRoutes);
 router.use("/AttributeValue", attributeValueRoutes);
 router.use("/auth", userRoutes); 
-router.use("/cart",cartRoutes)
+router.use("/cart",cartRoutes);
+router.use('/banners', bannerRoutes);
+
 router.use("/orders",orderRoutes)
 router.use("/orderitem", orderItemRoutes);
 
