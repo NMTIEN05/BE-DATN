@@ -18,7 +18,8 @@ connectDB();
 // API routes
 app.use("/api", router);
 
-const bannerRoutes = require('./src/routes/banner.js');
+import bannerRoutes from './src/routes/banner.js';
+
 app.use('/api/banners', bannerRoutes);
 
 

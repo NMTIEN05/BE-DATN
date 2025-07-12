@@ -1,27 +1,33 @@
-import { Schema, model } from 'mongoose';
+import mongoose from 'mongoose';
 
-const bannerSchema = new Schema(
-  {
-    /* Ảnh đại diện (bắt buộc) */
-    imageUrl : { type: String, required: true },
-
-    /* Tiêu đề ngắn hiển thị trên banner */
-    title    : { type: String },
-
-    /* Link điều hướng khi click banner */
-    link     : { type: String },
-
-    /* Thứ tự hiển thị (sắp xếp ASC) */
-    sortOrder: { type: Number, default: 0 },
-
-    /* Banner bật/tắt */
-    isActive : { type: Boolean, default: true },
-
-    /* Khoảng ngày hiệu lực (tuỳ chọn) */
-    startAt  : { type: Date },
-    endAt    : { type: Date },
+const bannerSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    trim: true,
   },
-  { timestamps: true }
-);
+  image: {
+    type: String,
+    required: true,
+  },
+  description: {
+    type: String,
+    trim: true,
+  },
+  link: {
+    type: String,
+    trim: true,
+  },
+  isActive: {
+    type: Boolean,
+    default: true,
+  },
+  order: {
+    type: Number,
+    default: 0,
+  },
+}, {
+  timestamps: true,
+});
 
-export default model('Banner', bannerSchema);
+const Banner = mongoose.model('Banner', bannerSchema);
+export default Banner;
