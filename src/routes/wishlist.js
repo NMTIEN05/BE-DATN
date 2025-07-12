@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { getWishlist, addToWishlist, removeFromWishlist } from '../controllers/wishlist.js';
-import requireAuth from '../middlewares/auth.js';      // middleware verify JWT
+import { authenticate } from '../middlewares/auth.js'; // ✅ Sửa ở đây
 
 const router = Router();
 
-router.use(requireAuth);              // tất cả endpoint cần đăng nhập
-router.get('/',            getWishlist);
+router.use(authenticate); // ✅ Sửa ở đây
+
+router.get('/', getWishlist);
 router.post('/:productId', addToWishlist);
 router.delete('/:productId', removeFromWishlist);
 

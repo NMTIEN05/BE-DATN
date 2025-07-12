@@ -1,4 +1,5 @@
-import Wishlist from '../model/wishlist';
+import Wishlist from '../model/wishlist.js';
+
 
 /* Lấy tất cả wishlist của user hiện tại */
 export const getWishlist = async (req, res, next) => {
