@@ -5,7 +5,7 @@ const productGroupSchema = new mongoose.Schema(
   {
     name: { type: String, required: true }, // VD: iPhone 16
     slug: { type: String, required: true, unique: true }, // VD: iphone-16
-    capacity:{type: String, required: true, unique: true},
+    capacity:{type: String, unique: true},
 
      imageUrl: {
   type: [String],  // Mảng các URL ảnh

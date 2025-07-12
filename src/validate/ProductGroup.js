@@ -24,7 +24,7 @@ export const productGroupSchema = Joi.object({
   description: Joi.string().allow("").max(1000),
   shortDescription: Joi.string().allow("").max(500),
 
-  brand: Joi.string().default("Apple"),
+  brand: Joi.string(),
 
   categoryId: Joi.objectId().required().messages({
     "any.required": "Category là bắt buộc",
