@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 import { EMAIL_PASSWORD, EMAIL_USERNAME } from "../configs/enviroments.js";
 
-// ✅ Tạo transporter cấu hình Gmail
+// ✅ Tạo transporter với cấu hình Gmail và xử lý lỗi "self-signed certificate" (nếu cần)
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -47,5 +47,4 @@ export const generatePasswordChangedEmail = () => {
   `;
 };
 
-// ✅ Export mặc định hàm gửi mail, và export riêng template
 export default sendEmail;
