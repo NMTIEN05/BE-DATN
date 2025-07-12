@@ -18,10 +18,7 @@ connectDB();
 // API routes
 app.use("/api", router);
 
-import bannerRoutes from './src/routes/banner.js';
 
-app.use('/api/banners', bannerRoutes);
-app.use('/api/wishlist', wishlistRoutes);
 
 
 setupSwagger(app);
