@@ -7,7 +7,11 @@ import {
   deleteFlashSale
 } from '../controllers/flashSale.js';
 
+
 import requireAuth from '../middlewares/auth.js'; // đảm bảo đã có middleware này
+
+
+
 
 const router = Router();
 

@@ -36,9 +36,9 @@ router.use("/AttributeValue", attributeValueRoutes);
 router.use("/auth", userRoutes); 
 router.use("/cart",cartRoutes);
 router.use('/banners', bannerRoutes);
-router.use('/comments', commentRoutes);
-router.use('/wishlist', wishlistRoutes);
 router.use('/flashsales', flashSaleRoutes);
+router.use('/wishlist', wishlistRoutes);
+router.use('/comments', commentRoutes);
 router.use("/orders",orderRoutes)
 router.use("/orderitem", orderItemRoutes);
 
