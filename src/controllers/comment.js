@@ -1,4 +1,4 @@
-import Comment from '../model/comment';
+import Comment from '../model/comment.js';
 
 /* [GET] /api/comments/:blogId?parent=ID */
 export const getComments = async (req, res) => {

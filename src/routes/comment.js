@@ -6,14 +6,15 @@ import {
   deleteComment,
 } from '../controllers/comment.js';
 
-import requireAuth from '../middlewares/auth.js';
+import { authenticate } from '../middlewares/auth.js'; // ✅ Import đúng middleware tên là authenticate
 
 const router = Router();
 
-router.use(requireAuth); // Tất cả comment yêu cầu đăng nhập
+// ✅ Chỉ những người dùng có token mới thao tác được với comment
+router.use(authenticate); 
 
-router.get('/:blogId', getComments);        // Lấy danh sách comment
-router.post('/:blogId', createComment);     // Tạo mới comment
+router.get('/:blogId', getComments);        // Lấy tất cả comment của 1 blog
+router.post('/:blogId', createComment);     // Thêm comment vào blog
 router.put('/:id', updateComment);          // Sửa comment
 router.delete('/:id', deleteComment);       // Xoá comment
 

@@ -1,4 +1,4 @@
-import FlashSale from '../model/flashSale';
+import FlashSale from '../model/flashSale.js';
 
 /**
  * [POST] /api/flashsales
