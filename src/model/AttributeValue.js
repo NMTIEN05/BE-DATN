@@ -10,7 +10,6 @@ const attributeValueSchema = new mongoose.Schema(
 			ref: "Attribute",
 			required: true,
 		},
-
 		deletedAt: { type: Date, default: null },
 		deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 	},

@@ -10,6 +10,7 @@ import {
   updateProduct,
   restoreProduct,
   hardDeleteProduct,
+  getProductsByCategory
   // hardDeleteAllProducts
 } from "../controllers/Product.js";
 import { getVariantDetailById } from "../controllers/Variant.js"; // Giữ lại import hợp lệ
@@ -26,6 +27,7 @@ router.get("/:id", getProductById);
 router.put("/:id", updateProduct);
 router.delete("/:id", deleteProduct);
 router.patch("/:id/restore", restoreProduct);
-router.delete("/:id/hard", hardDeleteProduct); 
+router.delete("/:id/hard", hardDeleteProduct);
+router.get("/category/:categoryId", getProductsByCategory); 
 // router.delete("/hard-all", hardDeleteAllProducts);
 export default router;

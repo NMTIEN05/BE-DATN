@@ -22,6 +22,8 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ message: "Dữ liệu không hợp lệ", errors });
     }
 
+    const { shippingInfo, paymentMethod, totalAmount } = req.body;
+
     const userObjectId = new mongoose.Types.ObjectId(userId);
     const cart = await Cart.findOne({ userId: userObjectId });
     if (!cart) return res.status(404).json({ message: "Không tìm thấy giỏ hàng" });
@@ -36,8 +38,12 @@ export const createOrder = async (req, res) => {
       userId: userObjectId,
       items: [],
       totalAmount: 0,
-      shippingAddress: req.body.shippingAddress,
-      paymentMethod: req.body.paymentMethod,
+      shippingInfo: {
+        fullName: shippingInfo.fullName,
+        phone: shippingInfo.phone,
+        address: shippingInfo.address,
+      },
+      paymentMethod,
       status: "pending",
     });
 
@@ -62,11 +68,11 @@ export const createOrder = async (req, res) => {
     );
 
     // ✅ So sánh tổng tiền với client gửi
-    if (totalAmountServer !== req.body.totalAmount) {
+    if (totalAmountServer !== totalAmount) {
       return res.status(400).json({
         message: "Tổng tiền không khớp với server",
         expected: totalAmountServer,
-        received: req.body.totalAmount,
+        received: totalAmount,
       });
     }
 
@@ -78,7 +84,7 @@ export const createOrder = async (req, res) => {
     // ✅ Xoá giỏ hàng
     await CartItem.deleteMany({ cartId: cart._id });
 
-    // ✅ Gửi email xác nhận
+    // ✅ Gửi email xác nhận đơn hàng
     const user = await UserModel.findById(userId);
     if (user && user.email) {
       const html = generateOrderConfirmationEmail(
@@ -93,9 +99,8 @@ export const createOrder = async (req, res) => {
       );
     }
 
-    // ✅ Trả phản hồi sau khi mọi thứ xong
+    // ✅ Trả về phản hồi
     res.status(201).json(order);
-
   } catch (err) {
     console.error("❌ Lỗi khi tạo đơn hàng:", err);
     res.status(500).json({

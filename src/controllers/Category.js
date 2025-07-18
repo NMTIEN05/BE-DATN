@@ -1,12 +1,14 @@
     import Category from "../model/Category.js";
 import { categorySchema } from "../validate/Category.js";
+import ProductGroup from "../model/ProductGroup.js";
+
 
 export const getCategory = async (req, res) => {
   try {
     // Lấy query parameters từ URL
     let {
       offset = "0",
-      limit = "10",
+      limit = "3",
       sortBy = "createdAt",   // sắp xếp theo thời gian tạo
       order = "desc",         // mặc định giảm dần
       name,                   // lọc theo tên nếu có
@@ -162,5 +164,20 @@ export const updateCategory = async (req, res) => {
   } catch (error) {
     console.error("Error updating category:", error);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+export const getProductGroupsByCategoryId = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const groups = await ProductGroup.find({ categoryId: id, deletedAt: null });
+
+    res.status(200).json({
+      success: true,
+      data: groups,
+    });
+  } catch (error) {
+    console.error("Lỗi khi lấy ProductGroup theo categoryId:", error);
+    res.status(500).json({ message: "Lỗi server" });
   }
 };

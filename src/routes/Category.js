@@ -5,6 +5,7 @@ import {
   getCategory,            // 👈 lấy tất cả chưa xoá
   getCategorybyId,        // 👈 lấy theo id
   updateCategory,
+  getProductGroupsByCategoryId,
   forceDeleteCategory,    // 👈 xoá cứng
   getDeletedCategories,   // 👈 danh sách đã xoá mềm
   restoreCategory         // 👈 khôi phục
@@ -22,6 +23,7 @@ router.post("/", createCategory);
 router.get("/", getCategory);
 router.get("/:id", getCategorybyId);
 router.put("/:id", updateCategory);
-router.delete("/:id", deleteCategory);               // xoá mềm
+router.delete("/:id", deleteCategory);
+router.get("/:id/product-groups", getProductGroupsByCategoryId);               // xoá mềm
 
 export default router;

@@ -10,7 +10,7 @@ export const getAllProducts = async (req, res) => {
   try {
     let {
       offset = "0",
-      limit = "10",
+      limit = "5",
       sortBy = "createdAt",
       order = "desc",
       groupId,
@@ -268,3 +268,31 @@ export const getVariantsByProductId = async (req, res) => {
 
 
 
+// [GET] /api/products/category/:categoryId
+export const getProductsByCategory = async (req, res) => {
+  try {
+    const categoryId = req.params.categoryId;
+
+    const products = await Product.find({
+      categoryId,
+      deletedAt: null
+    })
+      .sort({ createdAt: -1 }) // hoặc sort theo tiêu chí khác nếu muốn
+      .populate("categoryId")
+      .populate("groupId")
+      .populate({
+        path: "variants",
+        match: { deletedAt: null },
+        populate: {
+          path: "attributes.attributeId attributes.attributeValueId",
+        },
+      });
+
+    res.status(200).json({
+      success: true,
+      data: products
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi lấy sản phẩm theo danh mục", error });
+  }
+};
