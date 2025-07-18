@@ -13,7 +13,8 @@ import orderRoutes from "../routes/Order.js";
 import orderItemRoutes from "../routes/OrderItem.js";
 import bannerRoutes from "../routes/banner.js"; // Đã thêm dòng này từ nhánh mới
 import wishlistRoutes from "../routes/wishlist.js"; // Đã thêm dòng này từ nhánh mới
-
+import commentRoutes from '../routes/comment.js';
+import flashSaleRoutes from '../routes/flashSale.js';
 
 const router = express.Router();
 // Kiểm tra kết nối frontend
@@ -34,9 +35,9 @@ router.use("/AttributeValue", attributeValueRoutes);
 router.use("/auth", userRoutes); 
 router.use("/cart",cartRoutes);
 router.use('/banners', bannerRoutes);
-
+router.use('flashsales', flashSaleRoutes);
 router.use('/wishlist', wishlistRoutes);
-
+router.use('/comments', commentRoutes);
 router.use("/orders",orderRoutes)
 router.use("/orderitem", orderItemRoutes);
 
