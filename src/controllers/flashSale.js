@@ -1,12 +1,64 @@
+import mongoose from 'mongoose';
 import FlashSale from '../model/flashSale.js';
 
 /**
  * [POST] /api/flashsales
- * Tạo Flash Sale mới
+ * Tạo Flash Sale mới (cho 1 hoặc nhiều sản phẩm)
  */
 export const createFlashSale = async (req, res) => {
   try {
-    const { product, discountPercent, startTime, endTime, limitQuantity } = req.body;
+    const {
+      product, // Có thể là 1 id hoặc 1 mảng id
+      discountPercent,
+      startTime,
+      endTime,
+      limitQuantity,
+    } = req.body;
+
+    // Validate các trường bắt buộc
+    if (!discountPercent || !startTime || !endTime || !limitQuantity || !product) {
+      return res.status(400).json({ message: 'Thiếu thông tin bắt buộc' });
+    }
+
+    // Nếu là mảng → xử lý tạo nhiều flash sale
+    if (Array.isArray(product)) {
+      const createdFlashSales = [];
+      const skippedProducts = [];
+
+      for (const productId of product) {
+        if (!mongoose.Types.ObjectId.isValid(productId)) {
+          skippedProducts.push({ productId, reason: 'ID không hợp lệ' });
+          continue;
+        }
+
+        const existed = await FlashSale.findOne({ product: productId });
+        if (existed) {
+          skippedProducts.push({ productId, reason: 'Đã có flash sale' });
+          continue;
+        }
+
+        const flash = await FlashSale.create({
+          product: productId,
+          discountPercent,
+          startTime,
+          endTime,
+          limitQuantity,
+        });
+
+        createdFlashSales.push(flash);
+      }
+
+      return res.status(201).json({
+        message: 'Tạo flash sale cho nhiều sản phẩm thành công',
+        data: createdFlashSales,
+        skipped: skippedProducts,
+      });
+    }
+
+    // Nếu chỉ là 1 id → xử lý như cũ
+    if (!mongoose.Types.ObjectId.isValid(product)) {
+      return res.status(400).json({ message: 'ID sản phẩm không hợp lệ' });
+    }
 
     const existed = await FlashSale.findOne({ product });
     if (existed) {
