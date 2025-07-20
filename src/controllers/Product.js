@@ -4,8 +4,6 @@ import { productSchema } from "../validate/Product.js";
 
 import mongoose from "mongoose";
 
-
-// [GET] /api/products
 export const getAllProducts = async (req, res) => {
   try {
     let {
@@ -17,26 +15,43 @@ export const getAllProducts = async (req, res) => {
       categoryId,
       search,
       deleted,
+      minPrice,
+      maxPrice
     } = req.query;
 
     const offsetNumber = parseInt(offset, 10);
     const limitNumber = parseInt(limit, 10);
     const sortOrder = order === "desc" ? -1 : 1;
 
-    // ⚠️ Lọc deletedAt theo giá trị deleted
+    // Khởi tạo filter
     const filter = {};
+
+    // ⚠️ Lọc sản phẩm đã xoá hay chưa
     if (deleted === "true") {
-      filter.deletedAt = { $ne: null }; // sản phẩm đã bị xoá mềm
+      filter.deletedAt = { $ne: null };
     } else {
-      filter.deletedAt = null; // sản phẩm chưa bị xoá
+      filter.deletedAt = null;
     }
 
+    // 🔍 Lọc theo group
     if (groupId) filter.groupId = groupId;
+
+    // 🔍 Lọc theo category
     if (categoryId) filter.categoryId = categoryId;
+
+    // 🔍 Lọc theo tên (search title)
     if (search) {
       filter.title = { $regex: search, $options: "i" };
     }
 
+    // 💰 Lọc theo khoảng giá
+    if (minPrice || maxPrice) {
+      filter.priceDefault = {};
+      if (minPrice) filter.priceDefault.$gte = Number(minPrice);
+      if (maxPrice) filter.priceDefault.$lte = Number(maxPrice);
+    }
+
+    // Truy vấn sản phẩm
     const products = await Product.find(filter)
       .sort({ [sortBy]: sortOrder })
       .skip(offsetNumber)
@@ -51,6 +66,7 @@ export const getAllProducts = async (req, res) => {
         },
       });
 
+    // Tổng số lượng sản phẩm để phân trang
     const total = await Product.countDocuments(filter);
 
     res.status(200).json({
@@ -69,6 +85,7 @@ export const getAllProducts = async (req, res) => {
     });
   }
 };
+
 
 
 

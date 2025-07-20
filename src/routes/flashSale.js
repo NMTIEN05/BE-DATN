@@ -16,7 +16,7 @@ const router = Router();
 router.get('/active', getActiveFlashSales);
 
 // Admin: CRUD flash sale
-router.use(authenticate); // yêu cầu đăng nhập cho các route sau
+// router.use(authenticate); // yêu cầu đăng nhập cho các route sau
 router.get('/', getAllFlashSales);
 router.post('/', createFlashSale);
 router.put('/:id', updateFlashSale);
