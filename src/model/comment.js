@@ -22,6 +22,12 @@ const commentSchema = new mongoose.Schema(
       ref: 'Comment',
       default: null,
     },
+    rating: {
+       type: Number,
+       min: 1,
+       max: 5,
+       default: null,
+},
   },
   {
     timestamps: true, // tự động tạo createdAt và updatedAt

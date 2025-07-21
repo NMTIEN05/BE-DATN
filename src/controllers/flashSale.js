@@ -98,7 +98,25 @@ export const getActiveFlashSales = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
+/**
+ * [GET] /api/flashsales/:id
+ * Lấy 1 flash sale theo ID
+ */
+export const getFlashSaleById = async (req, res) => {
+  try {
+    const { id } = req.params;
 
+    const flashSale = await FlashSale.findById(id).populate('product');
+
+    if (!flashSale) {
+      return res.status(404).json({ message: 'Không tìm thấy flash sale' });
+    }
+
+    res.status(200).json(flashSale);
+  } catch (error) {
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+};
 /**
  * [GET] /api/flashsales
  * Lấy tất cả flash sale (admin xem)

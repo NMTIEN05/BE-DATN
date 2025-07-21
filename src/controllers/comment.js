@@ -20,13 +20,19 @@ export const getComments = async (req, res) => {
 export const createComment = async (req, res) => {
   try {
     const { blogId } = req.params;
-    const { content, parent = null } = req.body;
+    const { content, parent = null, rating = null } = req.body;
+
+    // Validate số sao nếu có
+    if (rating !== null && (rating < 1 || rating > 5)) {
+      return res.status(400).json({ message: 'Số sao không hợp lệ. Chỉ từ 1 đến 5.' });
+    }
 
     const comment = await Comment.create({
       blog: blogId,
       user: req.user._id,
       content,
       parent,
+      rating,
     });
 
     const populated = await comment.populate('user', 'username email');
@@ -39,7 +45,7 @@ export const createComment = async (req, res) => {
 /* [PUT] /api/comments/:id */
 export const updateComment = async (req, res) => {
   try {
-    const { content } = req.body;
+    const { content, rating = null } = req.body;
     const comment = await Comment.findById(req.params.id);
 
     if (!comment) return res.status(404).json({ message: 'Không tìm thấy comment' });
@@ -48,6 +54,15 @@ export const updateComment = async (req, res) => {
     }
 
     comment.content = content;
+
+    // Cập nhật lại số sao nếu có gửi lên
+    if (rating !== null) {
+      if (rating < 1 || rating > 5) {
+        return res.status(400).json({ message: 'Số sao không hợp lệ. Chỉ từ 1 đến 5.' });
+      }
+      comment.rating = rating;
+    }
+
     await comment.save();
     res.json(comment);
   } catch (err) {

@@ -4,22 +4,23 @@ import {
   getActiveFlashSales,
   getAllFlashSales,
   updateFlashSale,
-  deleteFlashSale
-} from '../controllers/flashSale.js';
+  deleteFlashSale,
+  getFlashSaleById
+} from '../controllers/flashSale.js'; // ✅ đảm bảo tên file là "flashSale.js"
 
-// SỬA LẠI: import đúng middleware theo named export
-import { authenticate } from '../middlewares/auth.js';
+import { authenticate, requireAdmin } from '../middlewares/auth.js';
 
 const router = Router();
 
-// Công khai: user thấy flash sale đang hoạt động
+// Công khai: người dùng thấy flash sale đang hoạt động
 router.get('/active', getActiveFlashSales);
 
-// Admin: CRUD flash sale
-// router.use(authenticate); // yêu cầu đăng nhập cho các route sau
-router.get('/', getAllFlashSales);
-router.post('/', createFlashSale);
-router.put('/:id', updateFlashSale);
-router.delete('/:id', deleteFlashSale);
+// Admin: yêu cầu đăng nhập
+router.use(authenticate); // Tất cả các route dưới đây sẽ yêu cầu xác thực
+router.get('/', requireAdmin, getAllFlashSales);
+router.get('/:id', requireAdmin, getFlashSaleById);
+router.post('/', requireAdmin, createFlashSale);
+router.put('/:id', requireAdmin, updateFlashSale);
+router.delete('/:id', requireAdmin, deleteFlashSale);
 
 export default router;
