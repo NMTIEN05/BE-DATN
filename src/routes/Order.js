@@ -5,7 +5,9 @@ import {
   getAllOrders,
   getOrderById,
   updateOrderStatus,
-  deleteOrder
+  deleteOrder,
+  updateShippingInfo,
+  cancelOrderByCustomer
 } from "../controllers/Order.js";
 import { requireAuth } from "../middlewares/requireAuth.js";
 import { requireAdmin } from "../middlewares/auth.js";
@@ -26,11 +28,14 @@ router.get("/", getAllOrders);
 
 // Chi tiết 1 đơn hàng
 router.get("/:id", getOrderById);
-
 // Admin cập nhật trạng thái đơn hàng
 router.put("/:id/status", requireAdmin, updateOrderStatus);
-
 // Admin xoá đơn hàng
 router.delete("/:id", requireAdmin, deleteOrder);
+router.put("/:id/shipping-info", updateShippingInfo);
+router.put('/:id/cancel', cancelOrderByCustomer);
+
+
+
 
 export default router;

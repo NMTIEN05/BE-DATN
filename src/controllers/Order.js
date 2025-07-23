@@ -185,13 +185,29 @@ export const getAllOrders = async (req, res) => {
 
 export const getOrderById = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id).populate("items");
-    if (!order) return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+    const order = await Order.findById(req.params.id)
+      .populate({
+        path: 'items',
+        populate: {
+          path: 'variantId',
+          select: 'name imageUrl price',
+        },
+      });
+
+    if (!order) {
+      return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+    }
+
     res.json(order);
   } catch (err) {
-    res.status(500).json({ message: "Lỗi chi tiết đơn hàng", error: err.message });
+    console.error('❌ Lỗi khi lấy chi tiết đơn hàng:', err);
+    res.status(500).json({
+      message: 'Lỗi chi tiết đơn hàng',
+      error: err.message,
+    });
   }
 };
+
 
 const ALLOWED_STATUS = [
   "pending",
@@ -263,5 +279,61 @@ export const deleteOrder = async (req, res) => {
     res.json({ message: "Xoá đơn hàng thành công" });
   } catch (err) {
     res.status(500).json({ message: "Lỗi xoá đơn hàng", error: err.message });
+  }
+};
+export const updateShippingInfo = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fullName, phone, address } = req.body;
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: 'Không tìm thấy đơn hàng' });
+    }
+
+    // Không cho sửa nếu đơn đã giao hoặc đã huỷ
+    if (['delivered', 'cancelled'].includes(order.status)) {
+      return res.status(400).json({ message: 'Không thể sửa đơn hàng đã hoàn tất hoặc huỷ' });
+    }
+
+    order.shippingInfo = {
+      ...order.shippingInfo,
+      fullName,
+      phone,
+      address,
+    };
+
+    await order.save();
+
+    res.status(200).json({ message: 'Cập nhật thông tin giao hàng thành công', order });
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi server', error: err.message });
+  }
+};
+export const cancelOrderByCustomer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const order = await Order.findById(id);
+    if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng' });
+
+    // Kiểm tra quyền sở hữu
+    if (order.userId.toString() !== userId.toString()) {
+      return res.status(403).json({ message: 'Bạn không có quyền huỷ đơn hàng này' });
+    }
+
+    // Chỉ cho phép huỷ ở trạng thái "pending" hoặc "processing"
+    if (!['pending', 'processing'].includes(order.status)) {
+      return res.status(400).json({ message: `Không thể huỷ đơn hàng ở trạng thái "${order.status}"` });
+    }
+
+    // Thực hiện huỷ
+    order.status = 'cancelled';
+    await order.save();
+
+    res.json({ message: 'Huỷ đơn hàng thành công', order });
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi huỷ đơn hàng', error: err.message });
   }
 };
