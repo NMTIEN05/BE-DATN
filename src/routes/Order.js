@@ -16,13 +16,13 @@ const router = express.Router();
 router.use(requireAuth);
 
 // Tạo đơn hàng
-router.post("", requireAuth,authenticate, createOrder);
+router.post("",authenticate, createOrder);
 
 // Người dùng lấy danh sách đơn hàng của mình
 router.get("/my-orders", getOrdersByUser);
 
 // Admin lấy tất cả đơn hàng
-router.get("/", requireAdmin, getAllOrders);
+router.get("/", getAllOrders);
 
 // Chi tiết 1 đơn hàng
 router.get("/:id", getOrderById);

@@ -11,15 +11,10 @@ export const requireAuth = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Sửa ở đây: dùng decoded.id thay vì decoded.userId
     const user = await User.findById(decoded.id);
     if (!user) return res.status(401).json({ message: "Người dùng không hợp lệ" });
 
-    // Gắn thông tin vào req.user
-    req.user = {
-      userId: user._id,
-      role: user.role,
-    };
+    req.user = user; // ✅ Gán full user để dùng ở bất kỳ đâu
 
     next();
   } catch (err) {

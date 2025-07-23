@@ -1,29 +1,43 @@
 import express from "express";
 import cors from "cors";
-import connectDB from "./src/configs/db.js"; // Đảm bảo import đúng connectDB
+import connectDB from "./src/configs/db.js";
 import router from "./src/routes/index.js";
 import dotenv from "dotenv";
 import setupSwagger from "./src/configs/swaggerConfig.js";
 
-// Load biến môi trường
 dotenv.config();
 
 const app = express();
-app.use(cors());
-app.use(express.json());
 
-// Kết nối MongoDB
+// ✅ CORS config cho nhiều FE
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'https://fe-admin.yourdomain.com',
+  'https://fe-client.yourdomain.com',
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 connectDB();
-// API routes
 app.use("/api", router);
 
-
-
-
 setupSwagger(app);
-// Khởi động server
+
 const PORT = process.env.PORT || 8888;
 app.listen(PORT, () => {
-  console.log(`Server is running on: http://localhost:${PORT}/api`);
-  console.log(`Swagger Docs available at http://localhost:${PORT}/api-docs`);
+  console.log(`✅ Server is running at http://localhost:${PORT}/api`);
+  console.log(`📚 Swagger Docs: http://localhost:${PORT}/api-docs`);
 });

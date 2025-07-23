@@ -1,148 +1,123 @@
 import mongoose from 'mongoose';
 import FlashSale from '../model/flashSale.js';
+import Product from '../model/Product.js';
 
-/**
- * [POST] /api/flashsales
- * Tạo Flash Sale mới (cho 1 hoặc nhiều sản phẩm)
- */
+// [POST] /api/flashsales
 export const createFlashSale = async (req, res) => {
   try {
     const {
-      product, // Có thể là 1 id hoặc 1 mảng id
+      title,
+      products,
       discountPercent,
       startTime,
       endTime,
-      limitQuantity,
+      limitQuantity
     } = req.body;
 
-    // Validate các trường bắt buộc
-    if (!discountPercent || !startTime || !endTime || !limitQuantity || !product) {
-      return res.status(400).json({ message: 'Thiếu thông tin bắt buộc' });
+    console.log('📥 Body nhận được:', req.body);
+
+    // Kiểm tra thiếu trường nào
+    if (!title) console.warn('⚠️ Thiếu trường: title');
+    if (!products || !Array.isArray(products)) console.warn('⚠️ products không hợp lệ');
+    if (!discountPercent) console.warn('⚠️ Thiếu trường: discountPercent');
+    if (!startTime) console.warn('⚠️ Thiếu trường: startTime');
+    if (!endTime) console.warn('⚠️ Thiếu trường: endTime');
+    if (limitQuantity === undefined) console.warn('⚠️ Thiếu trường: limitQuantity');
+
+    // Bỏ comment để bật validate đầu vào
+    if (!title || !Array.isArray(products) || products.length === 0 || !discountPercent || !startTime || !endTime || limitQuantity === undefined) {
+      return res.status(400).json({ message: 'Thiếu thông tin bắt buộc hoặc định dạng sai' });
     }
 
-    // Nếu là mảng → xử lý tạo nhiều flash sale
-    if (Array.isArray(product)) {
-      const createdFlashSales = [];
-      const skippedProducts = [];
+    // Kiểm tra ObjectId hợp lệ
+    const invalidIds = products.filter(id => !mongoose.Types.ObjectId.isValid(id));
+    if (invalidIds.length > 0) {
+      console.warn('⚠️ Các ID không hợp lệ:', invalidIds);
+      return res.status(400).json({ message: 'Một số ID sản phẩm không hợp lệ', invalidIds });
+    }
 
-      for (const productId of product) {
-        if (!mongoose.Types.ObjectId.isValid(productId)) {
-          skippedProducts.push({ productId, reason: 'ID không hợp lệ' });
-          continue;
-        }
+    // Kiểm tra sản phẩm có tồn tại không
+    const existedProducts = await Product.find({ _id: { $in: products } });
+    console.log('✅ Sản phẩm tìm thấy:', existedProducts.map(p => p._id.toString()));
 
-        const existed = await FlashSale.findOne({ product: productId });
-        if (existed) {
-          skippedProducts.push({ productId, reason: 'Đã có flash sale' });
-          continue;
-        }
+    if (existedProducts.length !== products.length) {
+      const existedIds = existedProducts.map(p => p._id.toString());
+      const notFound = products.filter(id => !existedIds.includes(id));
+      console.warn('❌ Một số sản phẩm không tồn tại:', notFound);
+      return res.status(404).json({ message: 'Một số sản phẩm không tồn tại', notFound });
+    }
 
-        const flash = await FlashSale.create({
-          product: productId,
-          discountPercent,
-          startTime,
-          endTime,
-          limitQuantity,
-        });
+    // Kiểm tra trùng flash sale thời gian
+    const overlapped = await FlashSale.find({
+      products: { $in: products },
+      startTime: { $lte: endTime },
+      endTime: { $gte: startTime },
+      isActive: true,
+    });
 
-        createdFlashSales.push(flash);
-      }
-
-      return res.status(201).json({
-        message: 'Tạo flash sale cho nhiều sản phẩm thành công',
-        data: createdFlashSales,
-        skipped: skippedProducts,
+    if (overlapped.length > 0) {
+      const conflictIds = overlapped.flatMap(fs => fs.products.map(id => id.toString()));
+      console.warn('⚠️ Có sản phẩm đã nằm trong flash sale đang hoạt động:', conflictIds);
+      return res.status(400).json({
+        message: 'Một số sản phẩm đã có flash sale trong thời gian này',
+        conflictProductIds: conflictIds,
       });
     }
 
-    // Nếu chỉ là 1 id → xử lý như cũ
-    if (!mongoose.Types.ObjectId.isValid(product)) {
-      return res.status(400).json({ message: 'ID sản phẩm không hợp lệ' });
-    }
-
-    const existed = await FlashSale.findOne({ product });
-    if (existed) {
-      return res.status(400).json({ message: 'Sản phẩm đã có flash sale' });
-    }
-
-    const flash = await FlashSale.create({
-      product,
+    // Tạo mới flash sale
+    const flashSale = await FlashSale.create({
+      title,
+      products,
       discountPercent,
       startTime,
       endTime,
       limitQuantity,
+      isActive: true,
     });
 
-    res.status(201).json({ message: 'Tạo flash sale thành công', data: flash });
+    console.log('✅ Flash sale được tạo:', flashSale);
+    res.status(201).json({ message: 'Tạo flash sale thành công', data: flashSale });
   } catch (error) {
+    console.error('❌ Lỗi khi tạo flash sale:', error);
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
 
-/**
- * [GET] /api/flashsales/active
- * Lấy danh sách flash sale đang hoạt động
- */
-export const getActiveFlashSales = async (req, res) => {
+// [GET] /api/flashsales
+export const getAllFlashSales = async (req, res) => {
   try {
-    const now = new Date();
-
-    const flashSales = await FlashSale.find({
-      isActive: true,
-      startTime: { $lte: now },
-      endTime: { $gte: now },
-    }).populate('product');
-
-    res.status(200).json(flashSales);
+    const flashSales = await FlashSale.find().populate('products');
+    res.json({ data: flashSales });
   } catch (error) {
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
-/**
- * [GET] /api/flashsales/:id
- * Lấy 1 flash sale theo ID
- */
+
+// [GET] /api/flashsales/:id
 export const getFlashSaleById = async (req, res) => {
   try {
     const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: 'ID không hợp lệ' });
 
-    const flashSale = await FlashSale.findById(id).populate('product');
+    const flashSale = await FlashSale.findById(id).populate('products');
+    if (!flashSale) return res.status(404).json({ message: 'Không tìm thấy flash sale' });
 
-    if (!flashSale) {
-      return res.status(404).json({ message: 'Không tìm thấy flash sale' });
-    }
-
-    res.status(200).json(flashSale);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server', error: error.message });
-  }
-};
-/**
- * [GET] /api/flashsales
- * Lấy tất cả flash sale (admin xem)
- */
-export const getAllFlashSales = async (req, res) => {
-  try {
-    const flashSales = await FlashSale.find().populate('product');
-    res.status(200).json(flashSales);
+    res.json({ data: flashSale });
   } catch (error) {
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
 
-/**
- * [PUT] /api/flashsales/:id
- * Cập nhật flash sale
- */
+// [PUT] /api/flashsales/:id
 export const updateFlashSale = async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    const updates = req.body;
 
-    const flashSale = await FlashSale.findByIdAndUpdate(id, updateData, { new: true });
-    if (!flashSale) {
-      return res.status(404).json({ message: 'Không tìm thấy flash sale' });
-    }
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: 'ID không hợp lệ' });
+
+    const flashSale = await FlashSale.findByIdAndUpdate(id, updates, { new: true }).populate('products');
+    if (!flashSale) return res.status(404).json({ message: 'Không tìm thấy flash sale để cập nhật' });
 
     res.json({ message: 'Cập nhật thành công', data: flashSale });
   } catch (error) {
@@ -150,20 +125,16 @@ export const updateFlashSale = async (req, res) => {
   }
 };
 
-/**
- * [DELETE] /api/flashsales/:id
- * Xoá flash sale
- */
+// [DELETE] /api/flashsales/:id
 export const deleteFlashSale = async (req, res) => {
   try {
     const { id } = req.params;
-    const flashSale = await FlashSale.findByIdAndDelete(id);
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: 'ID không hợp lệ' });
 
-    if (!flashSale) {
-      return res.status(404).json({ message: 'Không tìm thấy flash sale' });
-    }
+    const deleted = await FlashSale.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ message: 'Không tìm thấy flash sale để xoá' });
 
-    res.json({ message: 'Xoá flash sale thành công' });
+    res.json({ message: 'Xoá flash sale thành công', data: deleted });
   } catch (error) {
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }

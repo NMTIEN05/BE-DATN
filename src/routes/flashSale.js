@@ -1,26 +1,18 @@
-import { Router } from 'express';
+import express from 'express';
 import {
   createFlashSale,
-  getActiveFlashSales,
   getAllFlashSales,
+  getFlashSaleById,
   updateFlashSale,
-  deleteFlashSale,
-  getFlashSaleById
-} from '../controllers/flashSale.js'; // ✅ đảm bảo tên file là "flashSale.js"
+  deleteFlashSale
+} from '../controllers/flashSale.js';
 
-import { authenticate, requireAdmin } from '../middlewares/auth.js';
+const router = express.Router();
 
-const router = Router();
-
-// Công khai: người dùng thấy flash sale đang hoạt động
-router.get('/active', getActiveFlashSales);
-
-// Admin: yêu cầu đăng nhập
-router.use(authenticate); // Tất cả các route dưới đây sẽ yêu cầu xác thực
-router.get('/', requireAdmin, getAllFlashSales);
-router.get('/:id', requireAdmin, getFlashSaleById);
-router.post('/', requireAdmin, createFlashSale);
-router.put('/:id', requireAdmin, updateFlashSale);
-router.delete('/:id', requireAdmin, deleteFlashSale);
+router.post('/add', createFlashSale);
+// router.get('/', getAllFlashSales);
+// router.get('/:id', getFlashSaleById);
+// router.put('/:id', updateFlashSale);
+// router.delete('/:id', deleteFlashSale);
 
 export default router;
