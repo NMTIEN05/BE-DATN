@@ -18,6 +18,7 @@ import flashSaleRoutes from '../routes/flashSale.js';
 import  paymentRouter  from "../routes/Vnpay.js"; // Import the payment router
 // import VnpayRoutes from '../routes/Vnpay.js';
 // import VnpayRoutes from "../routes/Vnpay.js";
+import chatRouter from "../routes/chat.js"; // Import the chat router
 
 
 
@@ -49,6 +50,8 @@ router.use("/orderitem", orderItemRoutes);
 
 
 router.use("/payment", paymentRouter);
+router.use("/chat", chatRouter);
+
 
 
 
