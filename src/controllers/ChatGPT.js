@@ -18,6 +18,7 @@ const openai = new OpenAI({
 export const chatTuvan = async (req, res) => {
   try {
     const { message } = req.body;
+console.log("✅ CHECK API KEY:", process.env.OPENROUTER_API_KEY);
 
     // ✅ Lấy danh sách sản phẩm (top 10, chưa xoá)
     const products = await Product.find({ deletedAt: null }).limit(10);
