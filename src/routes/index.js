@@ -17,6 +17,7 @@ import commentRoutes from '../routes/comment.js';
 import flashSaleRoutes from '../routes/flashSale.js';
 import subBannerRoute from '../routes/subbanner.route.js';
 import blogRoutes from "../routes/blog.routes.js";
+import voucherRoutes from "../routes/voucher.route.js";
 import  paymentRouter  from "../routes/Vnpay.js"; // Import the payment router
 // import VnpayRoutes from '../routes/Vnpay.js';
 // import VnpayRoutes from "../routes/Vnpay.js";
@@ -51,6 +52,7 @@ router.use("/orders",orderRoutes)
 router.use("/orderitem", orderItemRoutes);
 router.use("/blog", blogRoutes);
 router.use('/subbanners', subBannerRoute);
+router.use("/vouchers", voucherRoutes);
 
 router.use("/payment", paymentRouter);
 router.use("/chat", chatRouter);
