@@ -16,42 +16,56 @@ export const getAllProducts = async (req, res) => {
       search,
       deleted,
       minPrice,
-      maxPrice
+      maxPrice,
+      categoryIds
     } = req.query;
+
+    // ✨ Map sortBy từ FE về đúng field DB
+    const sortMapping = {
+      popular: "sold", // nếu bạn có field `sold`
+      newest: "createdAt",
+      "price-asc": "priceDefault",
+      "price-desc": "priceDefault",
+    };
+
+    const rawSortBy = sortBy;
+    sortBy = sortMapping[rawSortBy] || "createdAt";
+    order = rawSortBy === "price-desc" ? "desc" : rawSortBy === "price-asc" ? "asc" : order;
+    const sortOrder = order === "desc" ? -1 : 1;
 
     const offsetNumber = parseInt(offset, 10);
     const limitNumber = parseInt(limit, 10);
-    const sortOrder = order === "desc" ? -1 : 1;
 
-    // Khởi tạo filter
+    // 🔍 Filter
     const filter = {};
 
-    // ⚠️ Lọc sản phẩm đã xoá hay chưa
-    if (deleted === "true") {
-      filter.deletedAt = { $ne: null };
-    } else {
-      filter.deletedAt = null;
-    }
+    // ⚠️ Sản phẩm đã xoá hay chưa
+    filter.deletedAt = deleted === "true" ? { $ne: null } : null;
 
     // 🔍 Lọc theo group
     if (groupId) filter.groupId = groupId;
 
     // 🔍 Lọc theo category
-    if (categoryId) filter.categoryId = categoryId;
+    if (categoryIds) {
+      const ids = categoryIds.split(",");
+      filter.categoryId = { $in: ids };
+    } else if (categoryId) {
+      filter.categoryId = categoryId;
+    }
 
-    // 🔍 Lọc theo tên (search title)
+    // 🔍 Lọc theo từ khoá (search)
     if (search) {
       filter.title = { $regex: search, $options: "i" };
     }
 
-    // 💰 Lọc theo khoảng giá
+    // 💰 Lọc theo giá
     if (minPrice || maxPrice) {
       filter.priceDefault = {};
       if (minPrice) filter.priceDefault.$gte = Number(minPrice);
       if (maxPrice) filter.priceDefault.$lte = Number(maxPrice);
     }
 
-    // Truy vấn sản phẩm
+    // 📦 Truy vấn sản phẩm
     const products = await Product.find(filter)
       .sort({ [sortBy]: sortOrder })
       .skip(offsetNumber)
@@ -66,7 +80,7 @@ export const getAllProducts = async (req, res) => {
         },
       });
 
-    // Tổng số lượng sản phẩm để phân trang
+    // 📊 Tổng số lượng
     const total = await Product.countDocuments(filter);
 
     res.status(200).json({
@@ -85,6 +99,7 @@ export const getAllProducts = async (req, res) => {
     });
   }
 };
+
 
 
 

@@ -181,3 +181,30 @@ export const getProductGroupsByCategoryId = async (req, res) => {
     res.status(500).json({ message: "Lỗi server" });
   }
 };
+export const getProductsByCategoryId = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const products = await Product.find({
+      categoryId: new mongoose.Types.ObjectId(id),
+      deletedAt: null,
+    })
+      .populate("categoryId")
+      .populate("groupId")
+      .populate({
+        path: "variants",
+        match: { deletedAt: null },
+        populate: {
+          path: "attributes.attributeId attributes.attributeValueId",
+        },
+      });
+
+    res.status(200).json({
+      success: true,
+      data: products,
+    });
+  } catch (error) {
+    console.error("Lỗi khi lấy sản phẩm theo categoryId:", error);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
