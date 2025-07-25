@@ -1,42 +1,61 @@
 import Comment from '../model/comment.js';
 
-/* [GET] /api/comments/:blogId?parent=ID */
+/* [GET] /api/comments/:productId?parent=ID */
 export const getComments = async (req, res) => {
   try {
-    const { blogId } = req.params;
+    const { productId } = req.params;
     const { parent = null } = req.query;
 
-    const comments = await Comment.find({ blog: blogId, parent })
+    const comments = await Comment.find({ product: productId, parent })
       .populate('user', 'username email')
       .sort({ createdAt: -1 });
 
-    res.json(comments);
+    // Chuyển _id -> id (comment + user)
+    const formatted = comments.map(comment => ({
+      ...comment.toObject(),
+      id: comment.id,
+      user: {
+        ...comment.user.toObject(),
+        id: comment.user.id,
+      },
+    }));
+
+    res.json(formatted);
   } catch (err) {
     res.status(500).json({ message: 'Lỗi server' });
   }
 };
 
-/* [POST] /api/comments/:blogId */
+/* [POST] /api/comments/:productId */
 export const createComment = async (req, res) => {
   try {
-    const { blogId } = req.params;
+    const { productId } = req.params;
     const { content, parent = null, rating = null } = req.body;
 
-    // Validate số sao nếu có
     if (rating !== null && (rating < 1 || rating > 5)) {
       return res.status(400).json({ message: 'Số sao không hợp lệ. Chỉ từ 1 đến 5.' });
     }
 
     const comment = await Comment.create({
-      blog: blogId,
-      user: req.user._id,
+      product: productId,
+      user: req.user.id,
       content,
       parent,
       rating,
     });
 
     const populated = await comment.populate('user', 'username email');
-    res.status(201).json(populated);
+
+    const formatted = {
+      ...populated.toObject(),
+      id: populated.id,
+      user: {
+        ...populated.user.toObject(),
+        id: populated.user.id,
+      },
+    };
+
+    res.status(201).json(formatted);
   } catch (err) {
     res.status(500).json({ message: 'Lỗi server', error: err.message });
   }
@@ -49,13 +68,12 @@ export const updateComment = async (req, res) => {
     const comment = await Comment.findById(req.params.id);
 
     if (!comment) return res.status(404).json({ message: 'Không tìm thấy comment' });
-    if (!comment.user.equals(req.user._id) && req.user.role !== 'admin') {
+    if (!comment.user.equals(req.user.id) && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Không có quyền sửa' });
     }
 
     comment.content = content;
 
-    // Cập nhật lại số sao nếu có gửi lên
     if (rating !== null) {
       if (rating < 1 || rating > 5) {
         return res.status(400).json({ message: 'Số sao không hợp lệ. Chỉ từ 1 đến 5.' });
@@ -64,7 +82,13 @@ export const updateComment = async (req, res) => {
     }
 
     await comment.save();
-    res.json(comment);
+
+    const formatted = {
+      ...comment.toObject(),
+      id: comment.id,
+    };
+
+    res.json(formatted);
   } catch (err) {
     res.status(500).json({ message: 'Lỗi server' });
   }
@@ -76,12 +100,11 @@ export const deleteComment = async (req, res) => {
     const comment = await Comment.findById(req.params.id);
 
     if (!comment) return res.status(404).json({ message: 'Không tìm thấy comment' });
-    if (!comment.user.equals(req.user._id) && req.user.role !== 'admin') {
+    if (!comment.user.equals(req.user.id) && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Không có quyền xoá' });
     }
 
-    // Xoá cả reply nếu có
-    await Comment.deleteMany({ parent: comment._id });
+    await Comment.deleteMany({ parent: comment.id });
     await comment.deleteOne();
 
     res.json({ message: 'Đã xoá comment thành công' });

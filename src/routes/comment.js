@@ -1,21 +1,36 @@
-import { Router } from 'express';
+import express from 'express';
 import {
   getComments,
   createComment,
   updateComment,
   deleteComment,
 } from '../controllers/comment.js';
+import { verifyToken } from '../middlewares/auth.js';
 
-import { authenticate } from '../middlewares/auth.js'; // ✅ Import đúng middleware tên là authenticate
+const router = express.Router();
 
-const router = Router();
+/**
+ * Lấy danh sách comment theo productId, có thể kèm parent để lấy reply
+ * [GET] /api/comments/:productId?parent=ID
+ */
+router.get('/comments/:productId', getComments);
 
-// ✅ Chỉ những người dùng có token mới thao tác được với comment
-router.use(authenticate); 
+/**
+ * Tạo comment mới cho sản phẩm (yêu cầu đăng nhập)
+ * [POST] /api/comments/:productId
+ */
+router.post('/comments/:productId', verifyToken, createComment);
 
-router.get('/:blogId', getComments);        // Lấy tất cả comment của 1 blog
-router.post('/:blogId', createComment);     // Thêm comment vào blog
-router.put('/:id', updateComment);          // Sửa comment
-router.delete('/:id', deleteComment);       // Xoá comment
+/**
+ * Cập nhật comment (yêu cầu đăng nhập)
+ * [PUT] /api/comments/:id
+ */
+router.put('/comments/:id', verifyToken, updateComment);
+
+/**
+ * Xoá comment (yêu cầu đăng nhập)
+ * [DELETE] /api/comments/:id
+ */
+router.delete('/comments/:id', verifyToken, deleteComment);
 
 export default router;
