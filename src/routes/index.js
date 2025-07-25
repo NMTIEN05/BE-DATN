@@ -13,7 +13,7 @@ import orderRoutes from "../routes/Order.js";
 import orderItemRoutes from "../routes/OrderItem.js";
 import bannerRoutes from "../routes/banner.js"; 
 import wishlistRoutes from "../routes/wishlist.js"; 
-import commentRoutes from '../routes/comment.js';
+// import commentRoutes from '../routes/comment.js';
 import flashSaleRoutes from '../routes/flashSale.js';
 import subBannerRoute from '../routes/subbanner.route.js';
 import blogRoutes from "../routes/blog.routes.js";
@@ -47,7 +47,7 @@ router.use("/cart",cartRoutes);
 router.use('/banners', bannerRoutes);
 router.use('/flashsale', flashSaleRoutes);
 router.use('/wishlist', wishlistRoutes);
-router.use('/comments', commentRoutes);
+// router.use('/comments', commentRoutes);
 router.use("/orders",orderRoutes)
 router.use("/orderitem", orderItemRoutes);
 router.use("/blog", blogRoutes);
