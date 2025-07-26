@@ -118,7 +118,12 @@ export const getOrdersByUser = async (req, res) => {
       return res.status(400).json({ message: "ID người dùng không hợp lệ" });
     }
 
-    const orders = await Order.find({ userId }).populate({
+    const filter = { userId };
+    if (req.query.status) {
+      filter.status = req.query.status;
+    }
+
+    const orders = await Order.find(filter).populate({
       path: "items",
       populate: {
         path: "variantId",

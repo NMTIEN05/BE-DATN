@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import path from "path";
 import connectDB from "./src/configs/db.js"; // Đảm bảo import đúng connectDB
 import router from "./src/routes/index.js";
 import dotenv from "dotenv";
@@ -12,13 +13,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Serve static files từ thư mục uploads
+app.use('/uploads', express.static(path.join(process.cwd(), 'src', 'uploads')));
+
 // Kết nối MongoDB
 connectDB();
 // API routes
 app.use("/api", router);
-
-
-
 
 setupSwagger(app);
 // Khởi động server
