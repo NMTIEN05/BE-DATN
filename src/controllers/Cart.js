@@ -58,13 +58,26 @@ export const getCart = async (req, res) => {
 
     const items = await CartItem.find({ cartId: cart._id })
       .populate("productId")
-      .populate("variantId");
+      .populate({
+        path: "variantId",
+        populate: [
+          {
+            path: "attributes.attributeId",
+            model: "Attribute",
+          },
+          {
+            path: "attributes.attributeValueId",
+            model: "AttributeValue",
+          },
+        ],
+      });
 
     res.json(items);
   } catch (err) {
     res.status(500).json({ message: "Lỗi lấy giỏ hàng", error: err.message });
   }
 };
+
 
 // ✅ Cập nhật số lượng sản phẩm trong giỏ
 export const updateCartItem = async (req, res) => {

@@ -28,7 +28,14 @@ export const createOrder = async (req, res) => {
     const cart = await Cart.findOne({ userId: userObjectId });
     if (!cart) return res.status(404).json({ message: "Không tìm thấy giỏ hàng" });
 
-    const cartItems = await CartItem.find({ cartId: cart._id }).populate("variantId");
+    const cartItems = await CartItem.find({ cartId: cart._id }).populate({
+  path: "variantId",
+  populate: [
+    { path: "attributes.attributeId", model: "Attribute" },
+    { path: "attributes.attributeValueId", model: "AttributeValue" },
+  ],
+});
+
     if (!cartItems.length) {
       return res.status(400).json({ message: "Giỏ hàng trống" });
     }
@@ -114,21 +121,45 @@ export const createOrder = async (req, res) => {
 export const getOrdersByUser = async (req, res) => {
   try {
     const userId = req.user?.id;
+
     if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ message: "ID người dùng không hợp lệ" });
     }
 
     const orders = await Order.find({ userId }).populate({
       path: "items",
-      populate: {
-        path: "variantId",
-        model: "Variant",
-      },
+      model: "OrderItem", // Model của items trong order
+      populate: [
+        {
+          path: "variantId",
+          model: "Variant",
+          populate: [
+            {
+              path: "attributes.attributeId",
+              model: "Attribute",
+            },
+            {
+              path: "attributes.attributeValueId",
+              model: "AttributeValue",
+            },
+          ],
+        },
+        {
+          path: "productId",
+          model: "Product",
+          select: "name capacity",
+        },
+      ],
     });
 
-    res.json(orders);
+    // In log để debug
+    console.log("🔍 Orders fetched for user:", userId);
+    console.dir(orders?.[0]?.items?.[0], { depth: null });
+
+    return res.json({ data: orders });
   } catch (err) {
-    res.status(500).json({ message: "Lỗi lấy đơn hàng", error: err.message });
+    console.error("❌ Lỗi khi lấy đơn hàng:", err);
+    return res.status(500).json({ message: "Lỗi lấy đơn hàng", error: err.message });
   }
 };
 
@@ -158,15 +189,34 @@ export const getAllOrders = async (req, res) => {
       .populate("userId", "full_name email")
       .populate({
         path: "items",
-        populate: {
-          path: "variantId",
-          select: "name imageUrl price",
-        },
+        model: "OrderItem",
+        populate: [
+          {
+            path: "variantId",
+            model: "Variant",
+            select: "name imageUrl price",
+            populate: [
+              {
+                path: "attributes.attributeId",
+                model: "Attribute",
+              },
+              {
+                path: "attributes.attributeValueId",
+                model: "AttributeValue",
+              },
+            ],
+          },
+          {
+            path: "productId",
+            model: "Product",
+            select: "name capacity",
+          },
+        ],
       });
 
     const total = await Order.countDocuments(filter);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: orders,
       pagination: {
@@ -176,22 +226,43 @@ export const getAllOrders = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({
+    console.error("❌ Lỗi lấy tất cả đơn hàng:", err);
+    return res.status(500).json({
       message: "Lỗi lấy tất cả đơn hàng",
       error: err.message,
     });
   }
 };
 
+
 export const getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
       .populate({
         path: 'items',
-        populate: {
-          path: 'variantId',
-          select: 'name imageUrl price',
-        },
+        model: 'OrderItem',
+        populate: [
+          {
+            path: 'variantId',
+            model: 'Variant',
+            select: 'name imageUrl price attributes',
+            populate: [
+              {
+                path: 'attributes.attributeId',
+                model: 'Attribute',
+              },
+              {
+                path: 'attributes.attributeValueId',
+                model: 'AttributeValue',
+              },
+            ],
+          },
+          {
+            path: 'productId',
+            model: 'Product',
+            select: 'name capacity',
+          },
+        ],
       });
 
     if (!order) {
@@ -207,6 +278,7 @@ export const getOrderById = async (req, res) => {
     });
   }
 };
+
 
 
 const ALLOWED_STATUS = [
