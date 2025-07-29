@@ -25,7 +25,6 @@ export const userSchema = Joi.object({
     "string.empty": "Họ tên không được để trống",
     "string.min": "Họ tên phải có ít nhất 2 ký tự",
   }),
-
   role: Joi.string()
     .valid("user", "admin", "staff")
     .default("user")
@@ -35,11 +34,16 @@ export const userSchema = Joi.object({
   isActive: Joi.boolean().default(true),
 });
 
-
+// --- SỬA ĐOẠN NÀY ---
 export const updateUserSchema = Joi.object({
+  full_name: Joi.string().min(2).max(100),
+  phone: Joi.string().pattern(/^[0-9]{9,11}$/),
+  address: Joi.string().allow("").max(255),
   role: Joi.string().valid("admin", "staff", "user"),
   isActive: Joi.boolean(),
 });
+// --- HẾT ---
+
 export const changePasswordSchema = Joi.object({
   oldPassword: Joi.string().required().messages({
     "string.empty": "Mật khẩu cũ không được để trống",
