@@ -51,6 +51,11 @@ const orderSchema = new mongoose.Schema({
     },
     default: "COD"
   },
+  discount: {
+  type: Number,
+  default: 0
+},
+
 
   paymentStatus: {
     type: String,

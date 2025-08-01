@@ -1,7 +1,7 @@
 import Joi from "joi";
 import joiObjectId from "joi-objectid";
 
-Joi.objectId = joiObjectId(Joi); // thêm hàm validate ObjectId
+Joi.objectId = joiObjectId(Joi); // Hỗ trợ validate ObjectId
 
 export const orderSchema = Joi.object({
   shippingInfo: Joi.object({
@@ -34,34 +34,25 @@ export const orderSchema = Joi.object({
     "any.required": "Tổng tiền là bắt buộc",
   }),
 
-  items: Joi.array().items(
-    Joi.object({
-      productId: Joi.objectId().required().messages({
-        "any.required": "Thiếu productId trong sản phẩm",
-      }),
-      variantId: Joi.objectId().required().messages({
-        "any.required": "Thiếu variantId trong sản phẩm",
-      }),
-      quantity: Joi.number().min(1).required().messages({
-        "number.min": "Số lượng phải lớn hơn 0",
-        "any.required": "Số lượng là bắt buộc",
-      }),
-      price: Joi.number().min(0).required().messages({
-        "number.min": "Giá tiền phải lớn hơn hoặc bằng 0",
-        "any.required": "Giá tiền là bắt buộc",
-      }),
-      name: Joi.string().required().messages({
-        "any.required": "Tên sản phẩm là bắt buộc",
-      }),
-      image: Joi.string().uri().allow("").messages({
-        "string.uri": "Link ảnh không hợp lệ",
-      }),
-    })
-  ).min(1).required().messages({
-    "array.base": "Danh sách sản phẩm phải là mảng",
-    "array.min": "Phải có ít nhất 1 sản phẩm",
-    "any.required": "Danh sách sản phẩm là bắt buộc",
-  }),
+  itemsToCheckout: Joi.array()
+    .items(
+      Joi.object({
+        variantId: Joi.objectId().required().messages({
+          "any.required": "Thiếu variantId trong sản phẩm",
+        }),
+        quantity: Joi.number().min(1).required().messages({
+          "number.min": "Số lượng phải lớn hơn 0",
+          "any.required": "Số lượng là bắt buộc",
+        }),
+      })
+    )
+    .min(1)
+    .required()
+    .messages({
+      "array.base": "Danh sách sản phẩm phải là mảng",
+      "array.min": "Cần ít nhất một sản phẩm để thanh toán",
+      "any.required": "Danh sách sản phẩm là bắt buộc",
+    }),
 
-  userId: Joi.objectId().optional(), // dùng khi không xác thực req.user
+  userId: Joi.objectId().optional(), // Dùng nếu không xác thực từ req.user
 });

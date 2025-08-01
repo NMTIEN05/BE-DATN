@@ -8,6 +8,7 @@ import UserModel from "../model/User.js";
 import { generateOrderConfirmationEmail, generateOrderStatusEmail } from "../utils/emailTemplates.js";
 import sendEmail from "../utils/sendMail.js";
 import Variant from "../model/Variant.js";
+import Voucher from "../model/voucher.js";
 
 
 export const createOrder = async (req, res) => {
@@ -17,32 +18,40 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ message: "ID người dùng không hợp lệ" });
     }
 
-    const { error } = orderSchema.validate(req.body, { abortEarly: false });
-    if (error) {
-      const errors = error.details.map((err) => err.message);
-      return res.status(400).json({ message: "Dữ liệu không hợp lệ", errors });
+    // Bạn có thể thêm validate schema ở đây nếu cần
+
+    const { shippingInfo, paymentMethod, itemsToCheckout, voucherCode } = req.body;
+
+    if (!itemsToCheckout || !Array.isArray(itemsToCheckout) || itemsToCheckout.length === 0) {
+      return res.status(400).json({ message: "Danh sách sản phẩm thanh toán không hợp lệ" });
     }
 
-    const { shippingInfo, paymentMethod, totalAmount } = req.body;
     const userObjectId = new mongoose.Types.ObjectId(userId);
-
     const cart = await Cart.findOne({ userId: userObjectId });
     if (!cart) return res.status(404).json({ message: "Không tìm thấy giỏ hàng" });
 
-    const cartItems = await CartItem.find({ cartId: cart._id }).populate("variantId");
+    const cartItems = await CartItem.find({
+      cartId: cart._id,
+      variantId: { $in: itemsToCheckout.map((item) => item.variantId) },
+    }).populate("variantId");
+
     if (!cartItems.length) {
-      return res.status(400).json({ message: "Giỏ hàng trống" });
+      return res.status(400).json({ message: "Không tìm thấy sản phẩm trong giỏ hàng" });
     }
 
-    // ✅ Tạo đơn hàng ban đầu (trống)
+    // Tạo đơn rỗng trước
     const order = await Order.create({
       userId: userObjectId,
       items: [],
       totalAmount: 0,
+      discount: 0,
       shippingInfo: {
         fullName: shippingInfo.fullName,
         phone: shippingInfo.phone,
         address: shippingInfo.address,
+        ward: shippingInfo.ward || "",
+        district: shippingInfo.district || "",
+        province: shippingInfo.province || "",
       },
       paymentMethod,
       status: "pending",
@@ -50,65 +59,111 @@ export const createOrder = async (req, res) => {
 
     const orderItems = [];
 
-    // ✅ Duyệt từng sản phẩm trong giỏ, kiểm tra tồn kho và tạo OrderItem
-    for (const item of cartItems) {
-      const variant = await Variant.findById(item.variantId._id);
+    for (const selectedItem of itemsToCheckout) {
+      const cartItem = cartItems.find((ci) =>
+        ci.variantId._id.toString() === selectedItem.variantId
+      );
+
+      if (!cartItem) {
+        return res.status(400).json({ message: "Sản phẩm không nằm trong giỏ hàng" });
+      }
+
+      const variant = await Variant.findById(selectedItem.variantId);
       if (!variant) {
         return res.status(404).json({ message: "Không tìm thấy biến thể sản phẩm" });
       }
 
-      if (variant.stock < item.quantity) {
+      const quantity = selectedItem.quantity;
+
+      if (variant.stock < quantity) {
         return res.status(400).json({
           message: `Sản phẩm "${variant.name}" không đủ hàng. Hiện còn ${variant.stock}`,
         });
       }
 
-      // ✅ Trừ tồn kho
-      variant.stock -= item.quantity;
+      variant.stock -= quantity;
       await variant.save();
 
-      // ✅ Tạo OrderItem
       const price = variant.price || 0;
       const orderItem = await OrderItem.create({
         orderId: order._id,
-        productId: item.productId,
+        productId: cartItem.productId,
         variantId: variant._id,
-        quantity: item.quantity,
+        quantity,
         price,
       });
 
       orderItems.push(orderItem);
     }
 
-    // ✅ Tính lại tổng tiền từ server
-    const totalAmountServer = orderItems.reduce(
+    // Xoá các item trong giỏ hàng đã mua
+    const variantIdsToRemove = itemsToCheckout.map((item) => item.variantId);
+    await CartItem.deleteMany({
+      cartId: cart._id,
+      variantId: { $in: variantIdsToRemove },
+    });
+
+    // Tính tổng tiền gốc
+    let totalAmountServer = orderItems.reduce(
       (sum, item) => sum + item.price * item.quantity,
       0
     );
 
-    if (totalAmountServer !== totalAmount) {
-      return res.status(400).json({
-        message: "Tổng tiền không khớp với server",
-        expected: totalAmountServer,
-        received: totalAmount,
-      });
+    // Áp dụng mã giảm giá nếu có
+    let discountAmount = 0;
+
+    if (voucherCode) {
+      // Tìm voucher theo mã
+      const voucher = await Voucher.findOne({ code: voucherCode });
+
+      if (!voucher) {
+        return res.status(400).json({ message: "Mã giảm giá không tồn tại" });
+      }
+
+      const now = new Date();
+      if (now < voucher.startDate || now > voucher.endDate) {
+        return res.status(400).json({ message: "Mã giảm giá đã hết hạn" });
+      }
+
+      if (voucher.usedCount >= voucher.usageLimit) {
+        return res.status(400).json({ message: "Mã giảm giá đã được sử dụng hết" });
+      }
+
+      if (totalAmountServer < voucher.minOrderValue) {
+        return res.status(400).json({
+          message: `Đơn hàng phải đạt tối thiểu ${voucher.minOrderValue.toLocaleString("vi-VN")}₫ để dùng mã`,
+        });
+      }
+
+      if (voucher.discountType === "fixed") {
+        discountAmount = voucher.discountValue;
+      } else if (voucher.discountType === "percentage") {
+        const percent = (totalAmountServer * voucher.discountValue) / 100;
+        discountAmount = voucher.maxDiscount
+          ? Math.min(percent, voucher.maxDiscount)
+          : percent;
+      }
+
+      // Cập nhật số lượt dùng voucher
+      voucher.usedCount += 1;
+      await voucher.save();
     }
 
-    // ✅ Cập nhật lại đơn hàng với danh sách item và tổng tiền
+    const finalTotal = Math.max(0, totalAmountServer - discountAmount);
+
+    // Cập nhật đơn hàng
     order.items = orderItems.map((item) => item._id);
-    order.totalAmount = totalAmountServer;
+    order.totalAmount = finalTotal;
+    order.discount = discountAmount;
     await order.save();
 
-    // ✅ Xoá giỏ hàng sau khi đặt hàng
-    await CartItem.deleteMany({ cartId: cart._id });
-
-    // ✅ Gửi email xác nhận
+    // Gửi email xác nhận đơn hàng nếu có email user
     const user = await UserModel.findById(userId);
     if (user?.email) {
       const html = generateOrderConfirmationEmail(
         user.full_name || user.username,
         order._id,
-        totalAmountServer
+        finalTotal
       );
       await sendEmail(user.email, "✅ Xác nhận đơn hàng từ HolaPhone", { html });
     }
@@ -119,6 +174,7 @@ export const createOrder = async (req, res) => {
     res.status(500).json({ message: "Lỗi khi tạo đơn hàng", error: err.message });
   }
 };
+
 export const getOrdersByUser = async (req, res) => {
   try {
     const userId = req.user?.id;
