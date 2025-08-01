@@ -30,9 +30,21 @@ export const addToCart = async (req, res) => {
     let cartItem = await CartItem.findOne({ cartId: cart._id, productId, variantId });
 
     if (cartItem) {
+      if (cartItem.quantity + quantity > variant.stock) {
+        return res.status(400).json({
+          message: `Số lượng vượt quá tồn kho. Chỉ còn lại ${variant.stock - cartItem.quantity} sản phẩm.`,
+        });
+      }
+
       cartItem.quantity += quantity;
       await cartItem.save();
     } else {
+      if (quantity > variant.stock) {
+        return res.status(400).json({
+          message: `Số lượng vượt quá tồn kho. Chỉ còn lại ${variant.stock} sản phẩm.`,
+        });
+      }
+
       cartItem = await CartItem.create({
         cartId: cart._id,
         productId,
@@ -47,6 +59,7 @@ export const addToCart = async (req, res) => {
     res.status(500).json({ message: "Lỗi thêm vào giỏ", error: err.message });
   }
 };
+
 
 // ✅ Lấy giỏ hàng của người dùng
 export const getCart = async (req, res) => {

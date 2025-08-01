@@ -10,7 +10,10 @@ import {
   updateUser,
   verifyEmailCode,
   changePassword,
-  verifyRegisterCode
+  verifyRegisterCode,
+  getCurrentUser,
+  updateCurrentUser,
+  deleteCurrentUser
 } from "../controllers/User.js";
 
 import { authenticate, requireAdmin } from "../middlewares/auth.js";
@@ -30,7 +33,9 @@ router.post("/reset-password", resetPassword);
 // 🔐 Đổi mật khẩu cho người dùng đang đăng nhập
 // ✅ Đặt TRƯỚC các route /:id để tránh nhầm
 router.post("/me/change-password", authenticate, changePassword);
-
+router.get("/me", authenticate, getCurrentUser);
+router.put("/me", authenticate, updateCurrentUser);
+router.delete("/me", authenticate, deleteCurrentUser);
 // 👤 User management
 router.get("/", authenticate, getAllUsers);
 router.get("/:id", authenticate, getUserById);

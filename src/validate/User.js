@@ -37,9 +37,13 @@ export const userSchema = Joi.object({
 
 
 export const updateUserSchema = Joi.object({
-  role: Joi.string().valid("admin", "staff", "user"),
-  isActive: Joi.boolean(),
+  full_name: Joi.string().min(2).max(100).optional(),
+  address: Joi.string().allow("").optional(),
+  phone: Joi.string().pattern(/^[0-9]{10,11}$/).optional(),
+  role: Joi.string().valid("admin", "staff", "user").optional(),
+  isActive: Joi.boolean().optional(),
 });
+
 export const changePasswordSchema = Joi.object({
   oldPassword: Joi.string().required().messages({
     "string.empty": "Mật khẩu cũ không được để trống",
