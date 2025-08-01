@@ -28,7 +28,8 @@ const orderSchema = new mongoose.Schema({
       "delivered",           // Đã giao
       "return_requested",    // Yêu cầu trả hàng
       "returned",            // Đã hoàn trả
-      "cancelled"            // Đã hủy
+      "cancelled"    ,
+       "rejected"         // Đã hủy
     ],
     default: "pending"
   },
@@ -42,6 +43,10 @@ const orderSchema = new mongoose.Schema({
     district: { type: String },   // Quận/huyện (tuỳ chọn)
     province: { type: String }    // Tỉnh/thành phố (tuỳ chọn)
   },
+  cancelReason: {
+  type: String,
+  default: null,
+},
 
   paymentMethod: {
     type: String,
@@ -54,6 +59,20 @@ const orderSchema = new mongoose.Schema({
   discount: {
   type: Number,
   default: 0
+},
+returnRequest: {
+  status: {
+    type: String,
+    enum: ["pending", "approved", "rejected"],
+    default: null,
+  },
+  reason: {
+    type: String,
+    default: "",
+  },
+  requestedAt: {
+    type: Date,
+  },
 },
 
 
