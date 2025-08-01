@@ -7,7 +7,12 @@ import {
   updateOrderStatus,
   deleteOrder,
   updateShippingInfo,
-  cancelOrderByCustomer
+  cancelOrderByCustomer,
+  requestReturn,
+  markRefunded,
+  markReturned,
+  updateReturnStatus
+
 } from "../controllers/Order.js";
 import { requireAuth } from "../middlewares/requireAuth.js";
 import { requireAdmin } from "../middlewares/auth.js";
@@ -34,6 +39,14 @@ router.put("/:id/status", requireAdmin, updateOrderStatus);
 router.delete("/:id", requireAdmin, deleteOrder);
 router.put("/:id/shipping-info", updateShippingInfo);
 router.put('/:id/cancel', cancelOrderByCustomer);
+
+router.post('/:orderId/return-request', requestReturn); // khách gửi yêu cầu
+router.patch('/:orderId/return-request', updateReturnStatus); // admin duyệt/từ chối
+router.put('/:orderId/return-request/returned', markReturned); // admin xác nhận đã nhận lại hàng
+router.put('/:orderId/return-request/refund', markRefunded); // admin hoàn tiền
+
+
+
 
 
 

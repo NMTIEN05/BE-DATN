@@ -34,16 +34,18 @@ export const userSchema = Joi.object({
   isActive: Joi.boolean().default(true),
 });
 
-// --- SỬA ĐOẠN NÀY ---
+// Schema validate cập nhật user
 export const updateUserSchema = Joi.object({
-  full_name: Joi.string().min(2).max(100),
-  phone: Joi.string().pattern(/^[0-9]{9,11}$/),
-  address: Joi.string().allow("").max(255),
-  role: Joi.string().valid("admin", "staff", "user"),
-  isActive: Joi.boolean(),
+  full_name: Joi.string().min(2).max(100).optional(),
+  phone: Joi.string().pattern(/^[0-9]{9,11}$/).optional().messages({
+    "string.pattern.base": "Số điện thoại không hợp lệ",
+  }),
+  address: Joi.string().allow("").max(255).optional(),
+  role: Joi.string().valid("admin", "staff", "user").optional(),
+  isActive: Joi.boolean().optional(),
 });
-// --- HẾT ---
 
+// Schema validate đổi mật khẩu
 export const changePasswordSchema = Joi.object({
   oldPassword: Joi.string().required().messages({
     "string.empty": "Mật khẩu cũ không được để trống",

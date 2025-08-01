@@ -23,6 +23,8 @@ import  paymentRouter  from "../routes/Vnpay.js"; // Import the payment router
 // import VnpayRoutes from "../routes/Vnpay.js";
 import chatRouter from "../routes/chat.js"; // Import the chat router
 
+import dashRouter from "../routes/dashboard.js"; // Import the dashboard router
+
 
 
 
@@ -56,6 +58,8 @@ router.use("/vouchers", voucherRoutes);
 
 router.use("/payment", paymentRouter);
 router.use("/chat", chatRouter);
+router.use("/dashbroad", dashRouter);
+
 
 
 
