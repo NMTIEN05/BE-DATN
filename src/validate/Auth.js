@@ -21,15 +21,18 @@ export const registerSchema = Joi.object({
   }),
 phone: Joi.string()
   .pattern(/^0\d{9}$/)
-  .required()
+  .allow("")
+  .optional()
   .messages({
     "string.pattern.base": "Số điện thoại phải bắt đầu bằng số 0 và có đúng 10 chữ số",
-    "string.empty": "Số điện thoại không được để trống",
   }),
 
     address: Joi.string().min(5).messages({
     "string.min": "Địa chỉ phải có ít nhất 5 ký tự nếu nhập",
   }),
+  province: Joi.string().allow("").optional(),
+  district: Joi.string().allow("").optional(),
+  ward: Joi.string().allow("").optional(),
   role: Joi.string().valid("user", "admin", "staff").default("user"),
 });
 

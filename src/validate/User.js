@@ -41,6 +41,9 @@ export const updateUserSchema = Joi.object({
     "string.pattern.base": "Số điện thoại không hợp lệ",
   }),
   address: Joi.string().allow("").max(255).optional(),
+  province: Joi.string().allow("").optional(),
+  district: Joi.string().allow("").optional(),
+  ward: Joi.string().allow("").optional(),
   role: Joi.string().valid("admin", "staff", "user").optional(),
   isActive: Joi.boolean().optional(),
 });

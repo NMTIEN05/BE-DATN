@@ -20,20 +20,30 @@ async function register(req, res) {
     const { error } = registerSchema.validate(req.body);
     if (error) return res.status(400).json({ message: error.details[0].message });
 
-    const { username, full_name, email, password, phone, address, role } = req.body;
+    const { username, full_name, email, password, phone, address, province, district, ward, role } = req.body;
 
-    const existingUser = await UserModel.findOne({ email });
+    // Kiểm tra email trùng lặp
+    const existingUserByEmail = await UserModel.findOne({ email });
+
+    if (existingUserByEmail) {
+      return res.status(400).json({ message: "Email đã được sử dụng." });
+    }
+
+    // Kiểm tra phone trùng lặp (chỉ khi có phone)
+    if (phone && phone.trim()) {
+      const existingUserByPhone = await UserModel.findOne({ phone: phone.trim() });
+      if (existingUserByPhone) {
+        return res.status(400).json({ message: "Số điện thoại đã được sử dụng." });
+      }
+    }
 
     const code = generateVerificationCode();
 
-    if (existingUser) {
-      if (existingUser.isVerified) {
-        return res.status(400).json({ message: "Email đã được sử dụng." });
-      }
-
-      existingUser.emailVerifyCode = code;
-      existingUser.emailVerifyExpires = Date.now() + 15 * 60 * 1000;
-      await existingUser.save();
+    // Xử lý trường hợp email đã tồn tại nhưng chưa xác minh
+    if (existingUserByEmail && !existingUserByEmail.isVerified) {
+      existingUserByEmail.emailVerifyCode = code;
+      existingUserByEmail.emailVerifyExpires = Date.now() + 15 * 60 * 1000;
+      await existingUserByEmail.save();
 
       const html = generateEmailVerificationCodeView(code);
       await sendEmail(email, "Mã xác thực tài khoản", { html });
@@ -50,8 +60,11 @@ async function register(req, res) {
       full_name,
       email,
       password: hashedPassword,
-      phone,
+      phone: phone && phone.trim() ? phone.trim() : undefined,
       address: address || "",
+      province: province || "",
+      district: district || "",
+      ward: ward || "",
       role: role || "user",
       isVerified: false,
       emailVerifyCode: code,
@@ -66,7 +79,32 @@ async function register(req, res) {
       user: { ...userCreated.toObject(), password: undefined },
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Register error:', error);
+    
+    // Xử lý lỗi duplicate key
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      const value = error.keyValue[field];
+      
+      let message = '';
+      switch (field) {
+        case 'email':
+          message = `Email ${value} đã được sử dụng.`;
+          break;
+        case 'phone':
+          message = `Số điện thoại ${value} đã được sử dụng.`;
+          break;
+        case 'username':
+          message = `Tên đăng nhập ${value} đã được sử dụng.`;
+          break;
+        default:
+          message = `Dữ liệu ${field} đã tồn tại.`;
+      }
+      
+      return res.status(400).json({ message });
+    }
+    
+    res.status(500).json({ message: "Lỗi server khi đăng ký. Vui lòng thử lại." });
   }
 }
 
