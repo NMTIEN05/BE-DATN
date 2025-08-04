@@ -7,6 +7,7 @@ const voucherSchema = new mongoose.Schema({
   maxDiscount: { type: Number }, // optional: cho % có giới hạn
   usageLimit: { type: Number, default: 1 },
   usedCount: { type: Number, default: 0 },
+  categories: [{ type: mongoose.Schema.Types.ObjectId, ref: "Category" }],
   minOrderValue: { type: Number, default: 0 },
   startDate: { type: Date, required: true },
   endDate: { type: Date, required: true },

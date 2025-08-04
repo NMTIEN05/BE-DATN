@@ -11,12 +11,17 @@ export const createVoucher = async (req, res, next) => {
 
 export const getAllVouchers = async (req, res, next) => {
   try {
-    const vouchers = await Voucher.find();
+    const vouchers = await Voucher.find().populate({
+      path: 'categories',
+      select: 'name',
+    });
+
     res.json(vouchers);
   } catch (err) {
     next(err);
   }
 };
+
 
 export const deleteVoucher = async (req, res, next) => {
   try {
@@ -29,11 +34,23 @@ export const deleteVoucher = async (req, res, next) => {
     next(err);
   }
 };
+export const getVoucherById = async (req, res, next) => {
+  try {
+    const voucher = await Voucher.findById(req.params.id);
+    if (!voucher) {
+      return res.status(404).json({ message: "Voucher không tồn tại" });
+    }
+
+    res.json({ data: voucher });
+  } catch (err) {
+    next(err);
+  }
+};
 
 // ✅ Áp dụng voucher
 export const applyVoucher = async (req, res, next) => {
   try {
-    const { code, total } = req.body;
+    const { code, total, categoryIds } = req.body;
 
     if (!code || !total) {
       return res.status(400).json({ message: "Thiếu mã voucher hoặc tổng đơn hàng" });
@@ -66,6 +83,21 @@ export const applyVoucher = async (req, res, next) => {
       });
     }
 
+    // ✅ Kiểm tra nếu voucher chỉ áp dụng cho một số danh mục
+    if (voucher.categories?.length > 0) {
+      if (!Array.isArray(categoryIds) || categoryIds.length === 0) {
+        return res.status(400).json({ message: "Thiếu danh mục sản phẩm trong giỏ hàng" });
+      }
+
+      const isApplicable = voucher.categories.some((cateId) =>
+        categoryIds.includes(cateId.toString())
+      );
+
+      if (!isApplicable) {
+        return res.status(400).json({ message: "Mã này không áp dụng cho các sản phẩm trong giỏ hàng" });
+      }
+    }
+
     let discount = 0;
 
     if (voucher.discountType === "percentage") {
@@ -92,12 +124,35 @@ export const applyVoucher = async (req, res, next) => {
         endDate: voucher.endDate,
         usageLimit: voucher.usageLimit,
         usedCount: voucher.usedCount,
+        categories: voucher.categories || [],
         description: voucher.description || "",
       },
       message: `Áp dụng mã thành công, giảm ${discount.toLocaleString("vi-VN")} VNĐ`,
     });
   } catch (err) {
     console.error("❌ Lỗi áp dụng voucher:", err);
+    next(err);
+  }
+};
+
+export const editVoucher = async (req, res, next) => {
+  try {
+    const updated = await Voucher.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "Voucher không tồn tại" });
+    }
+
+    res.json({
+      message: "Cập nhật mã giảm giá thành công!",
+      data: updated,
+    });
+  } catch (err) {
+    console.error("❌ Lỗi khi cập nhật voucher:", err);
     next(err);
   }
 };
