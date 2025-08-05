@@ -11,6 +11,10 @@ const voucherSchema = new mongoose.Schema({
   minOrderValue: { type: Number, default: 0 },
   startDate: { type: Date, required: true },
   endDate: { type: Date, required: true },
+  isActive: { type: Boolean, default: true },
+  description: { type: String },
+  userUsageLimit: { type: Number, default: 1 },
 }, { timestamps: true });
 
-export default mongoose.model("Voucher", voucherSchema);
+// ✅ Sửa chỗ này để tránh lỗi OverwriteModelError
+export default mongoose.models.Voucher || mongoose.model("Voucher", voucherSchema);
