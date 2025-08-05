@@ -25,6 +25,9 @@ import chatRouter from "../routes/chat.js"; // Import the chat router
 import locationRoutes from "../routes/location.js"; // Import the location router
 import voucheraddRoutes from "../routes/userVoucher.js"; // Import the voucher add router
 import dashRouter from "../routes/dashboard.js"; // Import the dashboard router
+// import  paymentRouter  from "../routes/Vnpay.js"; // Import the payment router
+
+import voucheraddRoutes from "../routes/userVoucher.js"; // Import the voucher add router
 
 
 
@@ -56,6 +59,8 @@ router.use("/orderitem", orderItemRoutes);
 router.use("/blog", blogRoutes);
 router.use('/subbanners', subBannerRoute);
 router.use("/vouchers", voucherRoutes);
+router.use("/user-voucher", voucheraddRoutes); 
+
 
 router.use("/payment", paymentRouter);
 router.use("/chat", chatRouter);

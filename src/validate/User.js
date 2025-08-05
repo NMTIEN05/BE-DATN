@@ -26,10 +26,10 @@ export const userSchema = Joi.object({
     "string.min": "Họ tên phải có ít nhất 2 ký tự",
   }),
   role: Joi.string()
-    .valid("user", "admin", "staff")
+    .valid("user", "admin", "staff","shipper")
     .default("user")
     .messages({
-      "any.only": "Vai trò không hợp lệ (phải là admin, user hoặc staff)",
+        "any.only": "Vai trò không hợp lệ (phải là admin, user, staff hoặc shipper)",
     }),
   isActive: Joi.boolean().default(true),
 });
@@ -44,7 +44,8 @@ export const updateUserSchema = Joi.object({
   province: Joi.string().allow("").optional(),
   district: Joi.string().allow("").optional(),
   ward: Joi.string().allow("").optional(),
-  role: Joi.string().valid("admin", "staff", "user").optional(),
+  role: Joi.string().valid("admin", "staff", "user", "shipper").optional(),
+
   isActive: Joi.boolean().optional(),
 });
 

@@ -7,4 +7,7 @@ const router = express.Router();
 router.post('/', authenticate, claimVoucher);
 router.get('/my', authenticate, getMyVouchers);
 
+
 export default router;
+
+

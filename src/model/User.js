@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema({
 
     role: {
         type: String,
-        enum: ["admin", "user", "staff"], // Thêm quyền mới vào đây
+        enum: ["admin", "user", "staff","shipper"], // Thêm quyền mới vào đây
         default: "user"
     },
 
