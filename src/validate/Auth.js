@@ -33,7 +33,7 @@ phone: Joi.string()
   province: Joi.string().allow("").optional(),
   district: Joi.string().allow("").optional(),
   ward: Joi.string().allow("").optional(),
-  role: Joi.string().valid("user", "admin", "staff").default("user"),
+  role: Joi.string().valid("user", "admin", "staff","shipper").default("user"),
 });
 
 // Schema validate đăng nhập
