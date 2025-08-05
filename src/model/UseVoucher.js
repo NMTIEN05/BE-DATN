@@ -10,4 +10,3 @@ const UserVoucher = mongoose.model('UserVoucher', userVoucherSchema);
 
 export default UserVoucher;
 
-
