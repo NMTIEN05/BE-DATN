@@ -11,7 +11,8 @@ import {
   requestReturn,
   markRefunded,
   markReturned,
-  updateReturnStatus
+  updateReturnStatus,
+  confirmReceived
 
 } from "../controllers/Order.js";
 import { requireAuth } from "../middlewares/requireAuth.js";
@@ -45,6 +46,7 @@ router.patch('/:orderId/return-request', updateReturnStatus); // admin duyệt/t
 router.put('/:orderId/return-request/returned', markReturned); // admin xác nhận đã nhận lại hàng
 router.put('/:orderId/return-request/refund', markRefunded); // admin hoàn tiền
 
+router.patch("/:id/confirm-received",confirmReceived);
 
 
 

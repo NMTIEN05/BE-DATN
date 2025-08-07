@@ -352,32 +352,38 @@ export const getOrderById = async (req, res) => {
 
 
 const ALLOWED_STATUS = [
-  "pending",
-  "processing",
-  "ready_to_ship",
-  "shipped",
-  "delivered",
-  "return_requested",
-  "returned",
-  "cancelled",
-  "rejected" // ❗️ nhớ thêm vào đây
+  "pending",             // Chờ xác nhận
+  "processing",          // Đang xử lý
+  "ready_to_ship",       // Chờ giao hàng
+  "shipped",             // Đang giao hàng
+  "delivered",           // Đã giao
+  "received",            // Khách đã nhận
+  "delivery_failed",     // Giao không thành công
+  "return_requested",    // Yêu cầu trả hàng
+  "returned",            // Đã hoàn trả
+  "cancelled",           // Đã hủy
+  "rejected"             // Admin từ chối
 ];
+
 
 const STATUS_FLOW = {
   pending: ["processing", "cancelled"],
   processing: ["ready_to_ship", "cancelled"],
   ready_to_ship: ["shipped", "cancelled"],
-  shipped: ["delivered", "return_requested"],
-  delivered: ["return_requested"],
-  return_requested: ["returned", "cancelled", "delivered", "rejected"], // ❗️ thêm "rejected"
+  shipped: ["delivered", "delivery_failed"],
+  delivery_failed: ["shipped", "cancelled"],  // Cho phép giao lại hoặc hủy
+  delivered: ["received", "return_requested"],
+  received: ["return_requested"],
+  return_requested: ["returned", "cancelled", "delivered", "rejected"],
   returned: [],
   cancelled: [],
-  rejected: [], // ❗️ thêm trạng thái mới
+  rejected: []
 };
+const FORBIDDEN_ADMIN_STATUSES = ["shipped", "delivered", "received"];
 
 export const updateOrderStatus = async (req, res) => {
   try {
-    const { status, rejectReason } = req.body;
+    const { status, rejectReason, failReason } = req.body;
     const { id } = req.params;
 
     if (!ALLOWED_STATUS.includes(status)) {
@@ -389,7 +395,14 @@ export const updateOrderStatus = async (req, res) => {
 
     const currentStatus = order.status;
 
-    // ✅ Trường hợp đặc biệt: từ chối yêu cầu trả hàng
+
+// ✅ Nếu là admin thì không được sửa khi đơn đã vào tay shipper
+if (req.user.role === "admin" && FORBIDDEN_ADMIN_STATUSES.includes(currentStatus)) {
+  return res.status(403).json({
+    message: `Admin không được phép cập nhật đơn hàng ở trạng thái '${currentStatus}'`,
+  });
+}
+    // ✅ Trường hợp từ chối yêu cầu trả hàng
     if (currentStatus === "return_requested" && status === "rejected") {
       if (!rejectReason || rejectReason.trim() === "") {
         return res.status(400).json({ message: "Vui lòng nhập lý do từ chối trả hàng" });
@@ -406,7 +419,20 @@ export const updateOrderStatus = async (req, res) => {
       return res.json({ message: "Đã từ chối yêu cầu trả hàng", order });
     }
 
-    // Kiểm tra trạng thái tiếp theo hợp lệ
+    // ✅ Trường hợp giao hàng thất bại
+    if (currentStatus === "shipped" && status === "delivery_failed") {
+      if (!failReason || failReason.trim() === "") {
+        return res.status(400).json({ message: "Vui lòng nhập lý do giao hàng không thành công" });
+      }
+
+      order.status = "delivery_failed";
+      order.deliveryFailedReason = failReason.trim(); // 👈 nhớ thêm field này vào schema nếu chưa có
+      await order.save();
+
+      return res.json({ message: "Cập nhật trạng thái: giao hàng thất bại", order });
+    }
+
+    // Kiểm tra trạng thái kế tiếp có hợp lệ không
     const allowedNextStatuses = STATUS_FLOW[currentStatus] || [];
     if (!allowedNextStatuses.includes(status)) {
       return res.status(400).json({
@@ -414,11 +440,11 @@ export const updateOrderStatus = async (req, res) => {
       });
     }
 
-    // ✅ Trường hợp chuyển sang trạng thái mới bình thường
+    // ✅ Cập nhật trạng thái bình thường
     order.status = status;
     await order.save();
 
-    // ✅ Gửi email (nếu cần)
+    // ✅ Gửi email nếu cần
     const user = await UserModel.findById(order.userId);
     if (user && user.email) {
       const html = generateOrderStatusEmail(user.full_name || user.username, order._id, status);
@@ -431,6 +457,7 @@ export const updateOrderStatus = async (req, res) => {
     res.status(500).json({ message: "Lỗi cập nhật", error: err.message });
   }
 };
+
 
 
 
@@ -611,5 +638,35 @@ export const markRefunded = async (req, res) => {
     res.json({ message: "Đã hoàn tiền cho khách hàng" });
   } catch (err) {
     res.status(500).json({ message: "Lỗi hoàn tiền", error: err.message });
+  }
+};
+export const confirmReceived = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?._id;
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+    }
+
+    // Kiểm tra quyền sở hữu
+    if (order.userId.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "Bạn không có quyền xác nhận đơn hàng này" });
+    }
+
+    // Chỉ xác nhận khi trạng thái hiện tại là 'delivered'
+    if (order.status !== "delivered") {
+      return res.status(400).json({ message: "Chỉ có thể xác nhận khi đơn hàng ở trạng thái 'Đã giao'" });
+    }
+
+    // Cập nhật trạng thái
+    order.status = "received";
+    await order.save();
+
+    res.json({ message: "Xác nhận đã nhận hàng thành công", order });
+  } catch (err) {
+    console.error("❌ Lỗi xác nhận đã nhận hàng:", err);
+    res.status(500).json({ message: "Lỗi server", error: err.message });
   }
 };

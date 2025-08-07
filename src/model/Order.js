@@ -18,21 +18,24 @@ const orderSchema = new mongoose.Schema({
     required: true
   },
 
-  status: {
-    type: String,
-    enum: [
-      "pending",             // Chờ xác nhận
-      "processing",          // Đang xử lý
-      "ready_to_ship",       // Chờ giao hàng
-      "shipped",             // Đang giao
-      "delivered",           // Đã giao
-      "return_requested",    // Yêu cầu trả hàng
-      "returned",            // Đã hoàn trả
-      "cancelled"    ,
-       "rejected"         // Đã hủy
-    ],
-    default: "pending"
-  },
+ status: {
+  type: String,
+  enum: [
+    "pending",             //  Chờ xác nhận
+    "processing",          //  Đang xử lý
+    "ready_to_ship",       //  Chờ giao hàng
+    "shipped",             //  Đang giao hàng
+    "delivered",           //  Shipper đã giao
+    "received",            //  Khách xác nhận đã nhận hàng
+    "delivery_failed",     //  Giao không thành công
+    "return_requested",    //  Yêu cầu trả hàng
+    "returned",            //  Đã hoàn trả
+    "cancelled",           //  Đã hủy (user/admin)
+    "rejected"             //  Admin từ chối đơn
+  ],
+  default: "pending"
+},
+
 
   shippingInfo: {
     fullName: { type: String, required: true },       // Họ tên người nhận
