@@ -13,7 +13,8 @@ export const removeFile = async (relPath) => {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
 
-  const absolute = path.join(__dirname, '..', relPath);
+  const normalized = relPath.startsWith('/') ? relPath.slice(1) : relPath;
+  const absolute = path.join(__dirname, '..', '..', normalized);
 
   try {
     await fs.unlink(absolute);

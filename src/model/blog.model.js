@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import slugMiddleware from '../middlewares/slug.middleware.js';
 
 const blogSchema = new mongoose.Schema(
   {
@@ -9,6 +10,11 @@ const blogSchema = new mongoose.Schema(
     smallTitle: {
       type: String,
       required: true,
+    },
+    slug: {
+      type: String,
+      unique: true,
+      index: true,
     },
     description: {
       type: String,
@@ -26,11 +32,19 @@ const blogSchema = new mongoose.Schema(
       type: String,
       default: 'Anonymous',
     },
+    published: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
   },
   {
     timestamps: true,
     versionKey: false,
   }
 );
+
+// Auto-generate slug from largeTitle
+blogSchema.plugin(slugMiddleware('largeTitle', 'slug', true));
 
 export default mongoose.model('Blog', blogSchema);

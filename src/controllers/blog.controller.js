@@ -1,5 +1,5 @@
 import Blog from '../model/blog.model.js';
-import { removeFile } from '../utils/file.utils.js'; // Giả sử bạn có hàm này đã xử lý fs.unlink
+import { removeFile } from '../utils/file.utils.js';
 
 /* Tạo mới */
 export const createBlog = async (req, res, next) => {
@@ -32,9 +32,16 @@ export const createBlog = async (req, res, next) => {
 };
 
 /* Lấy danh sách */
-export const getAllBlogs = async (_req, res, next) => {
+export const getAllBlogs = async (req, res, next) => {
   try {
-    const blogs = await Blog.find().sort({ createdAt: -1 });
+    const { status, slug } = req.query;
+
+    const filter = {};
+    if (status === 'published') filter.published = true;
+    if (status === 'draft') filter.published = false;
+    if (slug) filter.slug = slug;
+
+    const blogs = await Blog.find(filter).sort({ createdAt: -1 });
     res.json(blogs);
   } catch (err) {
     next(err);
@@ -60,7 +67,7 @@ export const updateBlog = async (req, res, next) => {
 
     const oldImage = blog.imageUrl;
 
-    const fields = ['largeTitle', 'smallTitle', 'description', 'content', 'author'];
+    const fields = ['largeTitle', 'smallTitle', 'description', 'content', 'author', 'published'];
     fields.forEach((f) => {
       if (req.body[f] !== undefined) blog[f] = req.body[f];
     });
