@@ -22,6 +22,11 @@ const userSchema = new mongoose.Schema({
         enum: ["admin", "user", "staff","shipper"], // Thêm quyền mới vào đây
         default: "user"
     },
+    lockReason: {
+  type: String,
+  default: "",
+},
+
 
     isActive: { type: Boolean, default: true },
 })

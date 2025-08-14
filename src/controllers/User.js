@@ -28,7 +28,12 @@ async function register(req, res) {
     if (existingUserByEmail) {
       return res.status(400).json({ message: "Email đã được sử dụng." });
     }
-
+  if (role === "admin") {
+      const existingAdmin = await UserModel.findOne({ role: "admin" });
+      if (existingAdmin) {
+        return res.status(400).json({ message: "Chỉ được phép tồn tại 1 tài khoản admin." });
+      }
+    }
     // Kiểm tra phone trùng lặp (chỉ khi có phone)
     if (phone && phone.trim()) {
       const existingUserByPhone = await UserModel.findOne({ phone: phone.trim() });
@@ -278,8 +283,7 @@ async function changePassword(req, res) {
 // [PUT] /users/:id
 async function updateUser(req, res) {
   try {
-    // Không cho cập nhật username và email
-   delete req.body.username;
+    delete req.body.username;
     delete req.body.email;
 
     const { error } = updateUserSchema.validate(req.body);
@@ -289,6 +293,39 @@ async function updateUser(req, res) {
 
     const { id } = req.params;
     const updatedData = req.body;
+       const targetUser = await UserModel.findById(id);
+    if (!targetUser) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+     if (
+      targetUser.role === "admin" &&
+      updatedData.hasOwnProperty("isActive") &&
+      updatedData.role &&
+      updatedData.role !== "admin"
+    ) {
+      return res.status(400).json({
+        message:
+          "Không thể thay đổi trạng thái khi hạ quyền admin xuống role khác.",
+      });
+    }
+
+    // Chỉ 1 admin duy nhất
+    if (updatedData.role === "admin") {
+      const existingAdmin = await UserModel.findOne({ role: "admin" });
+      if (existingAdmin && existingAdmin._id.toString() !== id) {
+        return res.status(400).json({ message: "Chỉ được phép tồn tại 1 tài khoản admin." });
+      }
+    }
+
+    // Nếu khóa tài khoản mà không có lý do
+    if (updatedData.isActive === false && !updatedData.lockReason) {
+      return res.status(400).json({ message: "Vui lòng nhập lý do khóa tài khoản." });
+    }
+
+    // Nếu mở lại tài khoản → xóa lý do khóa
+    if (updatedData.isActive === true) {
+      updatedData.lockReason = "";
+    }
 
     const user = await UserModel.findByIdAndUpdate(id, updatedData, {
       new: true,
@@ -310,6 +347,7 @@ async function updateUser(req, res) {
 }
 
 
+
 // [DELETE] /users/:id
 async function deleteUser(req, res) {
   try {
@@ -317,12 +355,16 @@ async function deleteUser(req, res) {
     const deletedUser = await UserModel.findByIdAndDelete(id);
     if (!deletedUser)
       return res.status(404).json({ message: "Không tìm thấy người dùng" });
-
+ if (user.role === "admin") {
+      return res.status(400).json({ message: "Không thể xoá tài khoản admin" });
+    }
     res.json({ message: "Xoá người dùng thành công" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 }
+// GET /users?role=shipper
+
 
 // [GET] /users
 async function getAllUsers(req, res) {
@@ -340,6 +382,50 @@ async function getAllUsers(req, res) {
     const sortOrder = order === "desc" ? -1 : 1;
 
     const filter = {};
+    if (search) {
+      filter.$or = [
+        { username: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const users = await UserModel.find(filter)
+      .select("-password")
+      .sort({ [sortBy]: sortOrder })
+      .skip(offsetNumber)
+      .limit(limitNumber);
+
+    const total = await UserModel.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      data: users,
+      pagination: {
+        total,
+        offset: offsetNumber,
+        limit: limitNumber,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+export async function getShippers(req, res) {
+  try {
+    let {
+      offset = "0",
+      limit = "10",
+      sortBy = "createdAt",
+      order = "desc",
+      search,
+    } = req.query;
+
+    const offsetNumber = parseInt(offset, 10);
+    const limitNumber = parseInt(limit, 10);
+    const sortOrder = order === "desc" ? -1 : 1;
+
+    const filter = { role: "shipper" };
+
     if (search) {
       filter.$or = [
         { username: { $regex: search, $options: "i" } },

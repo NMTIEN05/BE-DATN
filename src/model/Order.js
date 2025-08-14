@@ -36,7 +36,7 @@ const orderSchema = new mongoose.Schema({
   default: "pending"
 },
 
-
+shipperId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
   shippingInfo: {
     fullName: { type: String, required: true },       // Họ tên người nhận
     phone: { type: String, required: true },          // Số điện thoại

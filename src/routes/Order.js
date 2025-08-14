@@ -12,7 +12,9 @@ import {
   markRefunded,
   markReturned,
   updateReturnStatus,
-  confirmReceived
+  confirmReceived,
+  assignShipperToOrder,
+  getOrdersByShipper
 
 } from "../controllers/Order.js";
 import { requireAuth } from "../middlewares/requireAuth.js";
@@ -48,7 +50,9 @@ router.put('/:orderId/return-request/refund', markRefunded); // admin ho√†n ti·ª
 
 router.patch("/:id/confirm-received",confirmReceived);
 
+router.put("/:id/assign-shipper", assignShipperToOrder);
 
+router.get("/orders", getOrdersByShipper);
 
 
 

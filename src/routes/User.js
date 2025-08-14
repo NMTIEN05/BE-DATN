@@ -13,7 +13,7 @@ import {
   verifyRegisterCode,
   getCurrentUser,
   updateCurrentUser,
-  deleteCurrentUser
+  deleteCurrentUser,getShippers
 } from "../controllers/User.js";
 
 import { authenticate, requireAdmin } from "../middlewares/auth.js";
@@ -36,6 +36,8 @@ router.post("/me/change-password", authenticate, changePassword);
 router.get("/me", authenticate, getCurrentUser);
 router.put("/me", authenticate, updateCurrentUser);
 router.delete("/me", authenticate, deleteCurrentUser);
+router.get("/shipper", authenticate, getShippers);
+
 // 👤 User management
 router.get("/", authenticate, getAllUsers);
 router.get("/:id", authenticate, getUserById);

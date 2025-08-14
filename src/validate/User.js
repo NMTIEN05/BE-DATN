@@ -45,7 +45,7 @@ export const updateUserSchema = Joi.object({
   district: Joi.string().allow("").optional(),
   ward: Joi.string().allow("").optional(),
   role: Joi.string().valid("admin", "staff", "user", "shipper").optional(),
-
+lockReason: Joi.string().allow("").optional(),
   isActive: Joi.boolean().optional(),
 });
 

@@ -65,6 +65,7 @@ export const createOrder = async (req, res) => {
       },
       paymentMethod,
       status: 'pending',
+      shipperId: null,  // Chưa giao cho shipper nào
     });
 
     const orderItems = [];
@@ -256,6 +257,8 @@ export const getAllOrders = async (req, res) => {
       .sort({ [sortBy]: sortOrder })
       .skip(offsetNumber)
       .limit(limitNumber)
+      // .populate("shipperId", "full_name email phone")  // populate thông tin shipper
+      .populate({ path: "shipperId", model: "UserModel", select: "full_name email phone" })
       .populate("userId", "full_name email")
       .populate({
         path: "items",
@@ -308,9 +311,14 @@ export const getAllOrders = async (req, res) => {
 export const getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
+    //  .populate("shipperId", "full_name email phone")
+     .populate({ path: "shipperId", model: "UserModel", select: "full_name email phone" })
+.populate({ path: "userId", model: "UserModel", select: "full_name email" })
+
       .populate({
         path: 'items',
         model: 'OrderItem',
+        
         populate: [
           {
             path: 'variantId',
@@ -325,6 +333,7 @@ export const getOrderById = async (req, res) => {
                 path: 'attributes.attributeValueId',
                 model: 'AttributeValue',
               },
+              
             ],
           },
           {
@@ -383,7 +392,7 @@ const FORBIDDEN_ADMIN_STATUSES = ["shipped", "delivered", "received"];
 
 export const updateOrderStatus = async (req, res) => {
   try {
-    const { status, rejectReason, failReason } = req.body;
+    const { status, rejectReason, failReason, shipperId } = req.body;  // Thêm shipperId
     const { id } = req.params;
 
     if (!ALLOWED_STATUS.includes(status)) {
@@ -395,14 +404,14 @@ export const updateOrderStatus = async (req, res) => {
 
     const currentStatus = order.status;
 
+    // Nếu là admin thì không được sửa khi đơn đã vào tay shipper
+    if (req.user.role === "admin" && FORBIDDEN_ADMIN_STATUSES.includes(currentStatus)) {
+      return res.status(403).json({
+        message: `Admin không được phép cập nhật đơn hàng ở trạng thái '${currentStatus}'`,
+      });
+    }
 
-// ✅ Nếu là admin thì không được sửa khi đơn đã vào tay shipper
-if (req.user.role === "admin" && FORBIDDEN_ADMIN_STATUSES.includes(currentStatus)) {
-  return res.status(403).json({
-    message: `Admin không được phép cập nhật đơn hàng ở trạng thái '${currentStatus}'`,
-  });
-}
-    // ✅ Trường hợp từ chối yêu cầu trả hàng
+    // Trường hợp từ chối yêu cầu trả hàng
     if (currentStatus === "return_requested" && status === "rejected") {
       if (!rejectReason || rejectReason.trim() === "") {
         return res.status(400).json({ message: "Vui lòng nhập lý do từ chối trả hàng" });
@@ -419,14 +428,14 @@ if (req.user.role === "admin" && FORBIDDEN_ADMIN_STATUSES.includes(currentStatus
       return res.json({ message: "Đã từ chối yêu cầu trả hàng", order });
     }
 
-    // ✅ Trường hợp giao hàng thất bại
+    // Trường hợp giao hàng thất bại
     if (currentStatus === "shipped" && status === "delivery_failed") {
       if (!failReason || failReason.trim() === "") {
         return res.status(400).json({ message: "Vui lòng nhập lý do giao hàng không thành công" });
       }
 
       order.status = "delivery_failed";
-      order.deliveryFailedReason = failReason.trim(); // 👈 nhớ thêm field này vào schema nếu chưa có
+      order.deliveryFailedReason = failReason.trim(); 
       await order.save();
 
       return res.json({ message: "Cập nhật trạng thái: giao hàng thất bại", order });
@@ -440,11 +449,22 @@ if (req.user.role === "admin" && FORBIDDEN_ADMIN_STATUSES.includes(currentStatus
       });
     }
 
-    // ✅ Cập nhật trạng thái bình thường
+    // Cập nhật trạng thái
     order.status = status;
+
+    // Cập nhật shipperId nếu có trong request
+    if (shipperId) {
+      order.shipperId = shipperId;
+    }
+
+    // Chỉ xóa shipperId khi đơn bị huỷ hoặc hoàn trả
+    if (["cancelled", "returned", "rejected"].includes(status)) {
+      order.shipperId = undefined;
+    }
+
     await order.save();
 
-    // ✅ Gửi email nếu cần
+    // Gửi email nếu cần
     const user = await UserModel.findById(order.userId);
     if (user && user.email) {
       const html = generateOrderStatusEmail(user.full_name || user.username, order._id, status);
@@ -457,6 +477,8 @@ if (req.user.role === "admin" && FORBIDDEN_ADMIN_STATUSES.includes(currentStatus
     res.status(500).json({ message: "Lỗi cập nhật", error: err.message });
   }
 };
+
+
 
 
 
@@ -670,3 +692,75 @@ export const confirmReceived = async (req, res) => {
     res.status(500).json({ message: "Lỗi server", error: err.message });
   }
 };
+export const assignShipperToOrder = async (req, res) => {
+  try {
+    const { id } = req.params; // orderId
+    const { shipperId } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(shipperId)) {
+      return res.status(400).json({ message: "ID đơn hàng hoặc shipper không hợp lệ" });
+    }
+
+    const order = await Order.findById(id);
+    if (!order) return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+
+    // Chỉ cho phép gán shipper khi trạng thái đơn là 'pending' hoặc 'ready_to_ship'
+    if (!["pending", "ready_to_ship"].includes(order.status)) {
+      return res.status(400).json({ message: `Chỉ có thể phân công shipper khi đơn ở trạng thái '${order.status}'` });
+    }
+
+    order.shipperId = shipperId;
+
+    // Nếu muốn, có thể cập nhật trạng thái sang 'ready_to_ship' khi gán shipper lần đầu (tuỳ logic của bạn)
+    if (order.status === "pending") {
+      order.status = "ready_to_ship";
+    }
+
+    await order.save();
+
+    return res.json({ message: "Phân công shipper thành công", order });
+  } catch (error) {
+    console.error("❌ Lỗi phân công shipper:", error);
+    return res.status(500).json({ message: "Lỗi server", error: error.message });
+  }
+};
+export const getOrdersByShipper = async (req, res) => {
+  try {
+    // Lấy shipperId từ token (giả sử middleware auth đã gắn thông tin user vào req.user)
+    const shipperId = req.user._id;
+
+    const { offset = 0, limit = 10, status } = req.query;
+
+    if (!shipperId) {
+      return res.status(400).json({ message: "Không xác định được shipperId" });
+    }
+
+    const filter = { shipperId };
+
+    if (status) {
+      filter.status = status;
+    }
+
+    const orders = await Order.find(filter)
+      .populate('userId', '-password')
+      .skip(parseInt(offset))
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 });
+
+    const total = await Order.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      orders,
+      pagination: {
+        total,
+        offset: parseInt(offset),
+        limit: parseInt(limit),
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+}
+
