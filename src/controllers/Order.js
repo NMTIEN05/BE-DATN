@@ -726,41 +726,42 @@ export const assignShipperToOrder = async (req, res) => {
 };
 export const getOrdersByShipper = async (req, res) => {
   try {
-    // Lấy shipperId từ token (giả sử middleware auth đã gắn thông tin user vào req.user)
-    const shipperId = req.user._id;
+    console.log("req.user:", req.user); // 👈 Xem user có _id không
 
-    const { offset = 0, limit = 10, status } = req.query;
+    const shipperId = req.user.id; // thay vì req.user._id
 
     if (!shipperId) {
       return res.status(400).json({ message: "Không xác định được shipperId" });
     }
 
+    const { offset = 0, limit = 10, status } = req.query;
+
     const filter = { shipperId };
+    if (status) filter.status = status;
 
-    if (status) {
-      filter.status = status;
-    }
+    const [orders, total] = await Promise.all([
+      Order.find(filter)
+        .populate("userId", "-password")
+        .skip(Number(offset))
+        .limit(Number(limit))
+        .sort({ createdAt: -1 }),
+      Order.countDocuments(filter),
+    ]);
 
-    const orders = await Order.find(filter)
-      .populate('userId', '-password')
-      .skip(parseInt(offset))
-      .limit(parseInt(limit))
-      .sort({ createdAt: -1 });
-
-    const total = await Order.countDocuments(filter);
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       orders,
       pagination: {
         total,
-        offset: parseInt(offset),
-        limit: parseInt(limit),
+        offset: Number(offset),
+        limit: Number(limit),
       },
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: error.message });
+    console.error("getOrdersByShipper error:", error); // 👈 In full lỗi
+    return res.status(500).json({ message: error.message, stack: error.stack });
   }
-}
+};
+
+
 

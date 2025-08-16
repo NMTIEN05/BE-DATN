@@ -24,7 +24,6 @@ import {authenticate}  from "../middlewares/auth.js";
 const router = express.Router();
 
 router.use(requireAuth);
-
 // Tạo đơn hàng
 router.post("",authenticate, createOrder);
 
@@ -33,7 +32,7 @@ router.get("/my-orders", getOrdersByUser);
 
 // Admin lấy tất cả đơn hàng
 router.get("/", getAllOrders);
-
+router.get("/shipper", authenticate, getOrdersByShipper);
 // Chi tiết 1 đơn hàng
 router.get("/:id", getOrderById);
 // Admin cập nhật trạng thái đơn hàng
@@ -42,6 +41,7 @@ router.put("/:id/status", requireAdmin, updateOrderStatus);
 router.delete("/:id", requireAdmin, deleteOrder);
 router.put("/:id/shipping-info", updateShippingInfo);
 router.put('/:id/cancel', cancelOrderByCustomer);
+
 
 router.post('/:orderId/return-request', requestReturn); // khách gửi yêu cầu
 router.patch('/:orderId/return-request', updateReturnStatus); // admin duyệt/từ chối
@@ -52,7 +52,7 @@ router.patch("/:id/confirm-received",confirmReceived);
 
 router.put("/:id/assign-shipper", assignShipperToOrder);
 
-router.get("/orders", getOrdersByShipper);
+
 
 
 
