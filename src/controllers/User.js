@@ -20,21 +20,65 @@ async function register(req, res) {
     const { error } = registerSchema.validate(req.body);
     if (error) return res.status(400).json({ message: error.details[0].message });
 
-    const { username, full_name, email, password, phone, address, province, district, ward, role } = req.body;
+    const {
+      username,
+      full_name,
+      email,
+      password,
+      phone,
+      address,
+      province,
+      district,
+      ward,
+      role
+    } = req.body;
 
-    // Kiểm tra email trùng lặp
+    // ✅ Xác định ai đang gọi API (nếu chưa đăng nhập thì mặc định là user tự đăng ký)
+    const requesterRole = req.user?.role || "user";
+
+    let finalRole;
+
+    // 🚦 Rule phân quyền
+    if (requesterRole === "user") {
+      // user tự đăng ký → chỉ được tạo user
+      if (role && role !== "user") {
+        return res.status(403).json({ message: "Người dùng chỉ có thể tự đăng ký với role = user." });
+      }
+      finalRole = "user";
+
+    } else if (requesterRole === "staff") {
+      // staff chỉ được phép tạo user
+      if (!role || role === "user") {
+        finalRole = "user";
+      } else {
+        return res.status(403).json({ message: "Staff chỉ được phép tạo tài khoản có role = user." });
+      }
+
+    } else if (requesterRole === "admin") {
+      // admin có thể tạo staff hoặc user
+      if (role === "admin") {
+        // Kiểm tra nếu đã tồn tại admin
+        const existingAdmin = await UserModel.findOne({ role: "admin" });
+        if (existingAdmin) {
+          return res.status(400).json({ message: "Chỉ được phép tồn tại 1 tài khoản admin." });
+        }
+        finalRole = "admin";
+      } else if (role === "staff") {
+        finalRole = "staff";
+      } else if (!role || role === "user") {
+        finalRole = "user";
+      } else {
+        return res.status(400).json({ message: "Role không hợp lệ." });
+      }
+    }
+
+    // --- Kiểm tra email trùng lặp ---
     const existingUserByEmail = await UserModel.findOne({ email });
-
     if (existingUserByEmail) {
       return res.status(400).json({ message: "Email đã được sử dụng." });
     }
-  if (role === "admin") {
-      const existingAdmin = await UserModel.findOne({ role: "admin" });
-      if (existingAdmin) {
-        return res.status(400).json({ message: "Chỉ được phép tồn tại 1 tài khoản admin." });
-      }
-    }
-    // Kiểm tra phone trùng lặp (chỉ khi có phone)
+
+    // --- Kiểm tra phone trùng lặp ---
     if (phone && phone.trim()) {
       const existingUserByPhone = await UserModel.findOne({ phone: phone.trim() });
       if (existingUserByPhone) {
@@ -44,20 +88,7 @@ async function register(req, res) {
 
     const code = generateVerificationCode();
 
-    // Xử lý trường hợp email đã tồn tại nhưng chưa xác minh
-    if (existingUserByEmail && !existingUserByEmail.isVerified) {
-      existingUserByEmail.emailVerifyCode = code;
-      existingUserByEmail.emailVerifyExpires = Date.now() + 15 * 60 * 1000;
-      await existingUserByEmail.save();
-
-      const html = generateEmailVerificationCodeView(code);
-      await sendEmail(email, "Mã xác thực tài khoản", { html });
-
-      return res.status(200).json({
-        message: "Email đã tồn tại nhưng chưa xác minh. Mã xác minh mới đã được gửi.",
-      });
-    }
-
+    // --- Hash mật khẩu ---
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const userCreated = await UserModel.create({
@@ -70,12 +101,13 @@ async function register(req, res) {
       province: province || "",
       district: district || "",
       ward: ward || "",
-      role: role || "user",
+      role: finalRole,
       isVerified: false,
       emailVerifyCode: code,
       emailVerifyExpires: Date.now() + 15 * 60 * 1000,
     });
 
+    // --- Gửi email xác minh ---
     const html = generateEmailVerificationCodeView(code);
     await sendEmail(email, "Mã xác thực tài khoản", { html });
 
@@ -84,34 +116,35 @@ async function register(req, res) {
       user: { ...userCreated.toObject(), password: undefined },
     });
   } catch (error) {
-    console.error('Register error:', error);
-    
-    // Xử lý lỗi duplicate key
+    console.error("Register error:", error);
+
+    // --- Duplicate key ---
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];
       const value = error.keyValue[field];
-      
-      let message = '';
+
+      let message = "";
       switch (field) {
-        case 'email':
+        case "email":
           message = `Email ${value} đã được sử dụng.`;
           break;
-        case 'phone':
+        case "phone":
           message = `Số điện thoại ${value} đã được sử dụng.`;
           break;
-        case 'username':
+        case "username":
           message = `Tên đăng nhập ${value} đã được sử dụng.`;
           break;
         default:
           message = `Dữ liệu ${field} đã tồn tại.`;
       }
-      
+
       return res.status(400).json({ message });
     }
-    
+
     res.status(500).json({ message: "Lỗi server khi đăng ký. Vui lòng thử lại." });
   }
 }
+
 
 // [POST] /auth/login
 async function login(req, res) {
