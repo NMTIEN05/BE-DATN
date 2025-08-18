@@ -36,7 +36,7 @@ router.get("/shipper", authenticate, getOrdersByShipper);
 // Chi tiết 1 đơn hàng
 router.get("/:id", getOrderById);
 // Admin cập nhật trạng thái đơn hàng
-router.put("/:id/status", requireAdmin, updateOrderStatus);
+router.put("/:id/status", updateOrderStatus);
 // Admin xoá đơn hàng
 router.delete("/:id", requireAdmin, deleteOrder);
 router.put("/:id/shipping-info", updateShippingInfo);

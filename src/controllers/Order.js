@@ -70,42 +70,55 @@ export const createOrder = async (req, res) => {
 
     const orderItems = [];
 
-    for (const selectedItem of itemsToCheckout) {
-      const cartItem = cartItems.find((ci) =>
-        ci.variantId._id.toString() === selectedItem.variantId
-      );
+   for (const selectedItem of itemsToCheckout) {
+  const cartItem = cartItems.find(
+    (ci) => ci.variantId._id.toString() === selectedItem.variantId
+  );
 
-      if (!cartItem) {
-        return res.status(400).json({ message: 'Sản phẩm không nằm trong giỏ hàng' });
-      }
+  if (!cartItem) {
+    return res.status(400).json({ message: 'Sản phẩm không nằm trong giỏ hàng' });
+  }
 
-      const variant = await Variant.findById(selectedItem.variantId);
-      if (!variant) {
-        return res.status(404).json({ message: 'Không tìm thấy biến thể sản phẩm' });
-      }
+  const variant = await Variant.findById(selectedItem.variantId);
+  if (!variant) {
+    return res.status(404).json({ message: 'Không tìm thấy biến thể sản phẩm' });
+  }
 
-      const quantity = selectedItem.quantity;
+  const quantity = selectedItem.quantity;
 
-      if (variant.stock < quantity) {
-        return res.status(400).json({
-          message: `Sản phẩm \"${variant.name}\" không đủ hàng. Hiện còn ${variant.stock}`,
-        });
-      }
+  if (variant.stock < quantity) {
+    return res.status(400).json({
+      message: `Sản phẩm \"${variant.name}\" không đủ hàng. Hiện còn ${variant.stock}`,
+    });
+  }
 
-      variant.stock -= quantity;
-      await variant.save();
+  // ⚡️ So sánh giá cũ (từ client/cart) với giá hiện tại
+  const currentPrice = variant.price || 0;
+  if (selectedItem.price && selectedItem.price !== currentPrice) {
+    // Bạn có thể return lỗi hoặc chỉ cảnh báo tuỳ ý
+    return res.status(400).json({
+      message: `Giá sản phẩm "${variant.name}" đã thay đổi từ ${selectedItem.price.toLocaleString(
+        'vi-VN'
+      )}₫ sang ${currentPrice.toLocaleString('vi-VN')}₫. Vui lòng kiểm tra lại.`,
+    });
+  }
 
-      const price = variant.price || 0;
-      const orderItem = await OrderItem.create({
-        orderId: order._id,
-        productId: cartItem.productId,
-        variantId: variant._id,
-        quantity,
-        price,
-      });
+  // ✅ Trừ tồn kho
+  variant.stock -= quantity;
+  await variant.save();
 
-      orderItems.push(orderItem);
-    }
+  // ✅ Tạo orderItem với giá mới nhất
+  const orderItem = await OrderItem.create({
+    orderId: order._id,
+    productId: cartItem.productId,
+    variantId: variant._id,
+    quantity,
+    price: currentPrice,
+  });
+
+  orderItems.push(orderItem);
+}
+
 
     // ✅ Xoá item trong giỏ đã đặt
     const variantIdsToRemove = itemsToCheckout.map((item) => item.variantId);
@@ -361,38 +374,30 @@ export const getOrderById = async (req, res) => {
 
 
 const ALLOWED_STATUS = [
-  "pending",             // Chờ xác nhận
-  "processing",          // Đang xử lý
-  "ready_to_ship",       // Chờ giao hàng
-  "shipped",             // Đang giao hàng
-  "delivered",           // Đã giao
-  "received",            // Khách đã nhận
-  "delivery_failed",     // Giao không thành công
-  "return_requested",    // Yêu cầu trả hàng
-  "returned",            // Đã hoàn trả
-  "cancelled",           // Đã hủy
-  "rejected"             // Admin từ chối
+  "pending", "processing", "ready_to_ship", "shipped",
+  "delivered", "received", "delivery_failed",
+  "return_requested", "returned", "cancelled", "rejected"
 ];
-
 
 const STATUS_FLOW = {
   pending: ["processing", "cancelled"],
   processing: ["ready_to_ship", "cancelled"],
   ready_to_ship: ["shipped", "cancelled"],
   shipped: ["delivered", "delivery_failed"],
-  delivery_failed: ["shipped", "cancelled"],  // Cho phép giao lại hoặc hủy
+  delivery_failed: ["shipped"],
   delivered: ["received", "return_requested"],
   received: ["return_requested"],
-  return_requested: ["returned", "cancelled", "delivered", "rejected"],
+  return_requested: ["returned", "delivered", "rejected"],
   returned: [],
   cancelled: [],
   rejected: []
 };
+
 const FORBIDDEN_ADMIN_STATUSES = ["shipped", "delivered", "received"];
 
 export const updateOrderStatus = async (req, res) => {
   try {
-    const { status, rejectReason, failReason, shipperId } = req.body;  // Thêm shipperId
+    const { status, rejectReason, failReason, shipperId } = req.body;
     const { id } = req.params;
 
     if (!ALLOWED_STATUS.includes(status)) {
@@ -404,14 +409,14 @@ export const updateOrderStatus = async (req, res) => {
 
     const currentStatus = order.status;
 
-    // Nếu là admin thì không được sửa khi đơn đã vào tay shipper
+    // ❌ Admin không được sửa khi đơn đã vào tay shipper
     if (req.user.role === "admin" && FORBIDDEN_ADMIN_STATUSES.includes(currentStatus)) {
       return res.status(403).json({
         message: `Admin không được phép cập nhật đơn hàng ở trạng thái '${currentStatus}'`,
       });
     }
 
-    // Trường hợp từ chối yêu cầu trả hàng
+    // ✅ Trường hợp từ chối yêu cầu trả hàng
     if (currentStatus === "return_requested" && status === "rejected") {
       if (!rejectReason || rejectReason.trim() === "") {
         return res.status(400).json({ message: "Vui lòng nhập lý do từ chối trả hàng" });
@@ -428,20 +433,20 @@ export const updateOrderStatus = async (req, res) => {
       return res.json({ message: "Đã từ chối yêu cầu trả hàng", order });
     }
 
-    // Trường hợp giao hàng thất bại
+    // ✅ Trường hợp giao hàng thất bại
     if (currentStatus === "shipped" && status === "delivery_failed") {
       if (!failReason || failReason.trim() === "") {
         return res.status(400).json({ message: "Vui lòng nhập lý do giao hàng không thành công" });
       }
 
       order.status = "delivery_failed";
-      order.deliveryFailedReason = failReason.trim(); 
+      order.deliveryFailedReason = failReason.trim();
       await order.save();
 
       return res.json({ message: "Cập nhật trạng thái: giao hàng thất bại", order });
     }
 
-    // Kiểm tra trạng thái kế tiếp có hợp lệ không
+    // ❌ Kiểm tra trạng thái kế tiếp có hợp lệ không
     const allowedNextStatuses = STATUS_FLOW[currentStatus] || [];
     if (!allowedNextStatuses.includes(status)) {
       return res.status(400).json({
@@ -449,25 +454,34 @@ export const updateOrderStatus = async (req, res) => {
       });
     }
 
-    // Cập nhật trạng thái
+    // ✅ Cập nhật trạng thái
     order.status = status;
 
-    // Cập nhật shipperId nếu có trong request
+    // ✅ Nếu đơn COD và đã giao / đã nhận thì auto chuyển sang "Đã thanh toán"
+    if (order.paymentMethod === "COD" && ["delivered", "received"].includes(status)) {
+      order.paymentStatus = "paid";
+    }
+
+    // ✅ Cập nhật shipperId nếu có
     if (shipperId) {
       order.shipperId = shipperId;
     }
 
-    // Chỉ xóa shipperId khi đơn bị huỷ hoặc hoàn trả
+    // ❌ Xóa shipperId khi đơn bị hủy / trả / từ chối
     if (["cancelled", "returned", "rejected"].includes(status)) {
       order.shipperId = undefined;
     }
 
     await order.save();
 
-    // Gửi email nếu cần
+    // ✅ Gửi email thông báo cho user
     const user = await UserModel.findById(order.userId);
     if (user && user.email) {
-      const html = generateOrderStatusEmail(user.full_name || user.username, order._id, status);
+      const html = generateOrderStatusEmail(
+        user.full_name || user.username,
+        order._id,
+        status
+      );
       await sendEmail(user.email, "🔔 Cập nhật trạng thái đơn hàng", { html });
     }
 
@@ -477,6 +491,7 @@ export const updateOrderStatus = async (req, res) => {
     res.status(500).json({ message: "Lỗi cập nhật", error: err.message });
   }
 };
+
 
 
 
@@ -739,14 +754,22 @@ export const getOrdersByShipper = async (req, res) => {
     const filter = { shipperId };
     if (status) filter.status = status;
 
-    const [orders, total] = await Promise.all([
-      Order.find(filter)
-        .populate("userId", "-password")
-        .skip(Number(offset))
-        .limit(Number(limit))
-        .sort({ createdAt: -1 }),
-      Order.countDocuments(filter),
-    ]);
+  const [orders, total] = await Promise.all([
+  Order.find(filter)
+    .populate("userId", "-password")
+    .populate({
+      path: "items",           // bước 1: populate OrderItem
+      populate: {
+        path: "variantId",     // bước 2: populate Variant
+        select: "name imageUrl price"
+      }
+    })
+    .skip(Number(offset))
+    .limit(Number(limit))
+    .sort({ createdAt: -1 }),
+  Order.countDocuments(filter),
+]);
+
 
     return res.status(200).json({
       success: true,

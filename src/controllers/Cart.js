@@ -69,27 +69,29 @@ export const getCart = async (req, res) => {
 
     if (!cart) return res.json([]);
 
-    const items = await CartItem.find({ cartId: cart._id })
+    let items = await CartItem.find({ cartId: cart._id })
       .populate("productId")
       .populate({
         path: "variantId",
         populate: [
-          {
-            path: "attributes.attributeId",
-            model: "Attribute",
-          },
-          {
-            path: "attributes.attributeValueId",
-            model: "AttributeValue",
-          },
+          { path: "attributes.attributeId", model: "Attribute" },
+          { path: "attributes.attributeValueId", model: "AttributeValue" },
         ],
       });
 
+    items = items.map((item) => {
+      const obj = item.toObject();
+      obj.price = item.variantId?.price ?? item.price;
+      return obj;
+    });
+
     res.json(items);
   } catch (err) {
+    console.error("❌ Lỗi getCart:", err);
     res.status(500).json({ message: "Lỗi lấy giỏ hàng", error: err.message });
   }
 };
+
 
 
 // ✅ Cập nhật số lượng sản phẩm trong giỏ
