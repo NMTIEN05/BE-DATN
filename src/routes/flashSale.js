@@ -9,7 +9,7 @@ import {
 
 const router = express.Router();
 
-router.post('/add', createFlashSale);
+router.post('/', createFlashSale);
 router.get('/', getAllFlashSales);
 router.get('/:id', getFlashSaleById);
 // router.put('/:id', updateFlashSale);

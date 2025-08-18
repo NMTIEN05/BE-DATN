@@ -12,11 +12,11 @@ import { authenticate, requireAdmin } from "../middlewares/auth.js";
 const router = express.Router();
 
 // Admin
-router.post("/", authenticate, requireAdmin, createVoucher);
-router.put("/:id", authenticate, requireAdmin, editVoucher);
-router.get("/", authenticate, requireAdmin, getAllVouchers);
-router.get("/:id", authenticate, requireAdmin,getVoucherById );
-router.delete("/:id", authenticate, requireAdmin, deleteVoucher);
+router.post("/", authenticate, createVoucher);
+router.put("/:id", authenticate, editVoucher);
+router.get("/", authenticate, getAllVouchers);
+router.get("/:id", authenticate,getVoucherById );
+router.delete("/:id", authenticate, deleteVoucher);
 
 
 // Public
