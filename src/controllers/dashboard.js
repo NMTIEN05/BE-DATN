@@ -1,6 +1,7 @@
 import Order from '../model/Order.js';
 import UserModel from '../model/User.js';
 import Product from '../model/Product.js';
+import Variant from "../model/Variant.js";
 
 // 🔹 Tổng quan dashboard
 export const getDashboardSummary = async (req, res) => {
@@ -50,46 +51,111 @@ export const getMonthlyOrders = async (req, res) => {
 // 🔹 Sản phẩm bán chạy nhất (theo sold)
 export const getBestSellers = async (req, res) => {
   try {
-    const products = await Product.find()
-      .sort({ sold: -1 })
-      .limit(5); // Top 5 sản phẩm
-    res.json(products);
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err });
-  }
-};
+    const products = await Product.find({}, "title soldCount imageUrl");
 
-// 🔹 Sản phẩm sắp hết (stock <= 5)
-export const getLowStock = async (req, res) => {
-  try {
-    const products = await Product.find()
-      .sort({ stock: 1 })
-      .limit(5); // Top 5 sản phẩm ít stock
-    res.json(products);
+    // Tính tổng stock cho mỗi product
+    const result = await Promise.all(
+      products.map(async (product) => {
+        const variants = await Variant.find({ productId: product._id }, "stock");
+        const totalStock = variants.reduce((sum, v) => sum + v.stock, 0);
+
+        return {
+          _id: product._id,
+          title: product.title,
+          soldCount: product.soldCount,
+          quantity: totalStock,
+          imageUrl: product.imageUrl,
+        };
+      })
+    );
+  // sort theo soldCount giảm dần
+    const bestSellers = result.sort((a, b) => b.soldCount - a.soldCount).slice(0, 5);
+
+    res.json(bestSellers);
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err });
+    res.status(500).json({ message: "Server error", error: err });
   }
 };
 
 // 🔹 Sản phẩm tồn ít (stock <= 10)
-export const getFewStock = async (req, res) => {
+export const getLowStock = async (req, res) => {
   try {
-    const products = await Product.find()
-      .sort({ stock: 1 })
-      .limit(5); // Top 5 tồn ít
-    res.json(products);
+    const products = await Product.find({}, "title soldCount imageUrl");
+
+    const result = await Promise.all(
+      products.map(async (product) => {
+        const variants = await Variant.find({ productId: product._id }, "stock");
+        const totalStock = variants.reduce((sum, v) => sum + v.stock, 0);
+
+        return {
+          _id: product._id,
+          title: product.title,
+          soldCount: product.soldCount,
+          quantity: totalStock,
+          imageUrl: product.imageUrl,
+        };
+      })
+    );
+
+    const lowStock = result.filter((p) => p.quantity <= 5).slice(0, 5);
+
+    res.json(lowStock);
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err });
+    res.status(500).json({ message: "Server error", error: err });
   }
 };
+// 🔹 Sản phẩm tồn ít (stock <= 10)
+export const getFewStock = async (req, res) => {
+  try {
+    const products = await Product.find({}, "title soldCount imageUrl");
+
+    const result = await Promise.all(
+      products.map(async (product) => {
+        const variants = await Variant.find({ productId: product._id }, "stock");
+        const totalStock = variants.reduce((sum, v) => sum + v.stock, 0);
+
+        return {
+          _id: product._id,
+          title: product.title,
+          soldCount: product.soldCount,
+          quantity: totalStock,
+          imageUrl: product.imageUrl,
+        };
+      })
+    );
+
+    const fewStock = result.filter((p) => p.quantity <= 10).slice(0, 5);
+
+    res.json(fewStock);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err });
+  }
+};
+
 // 🔹 Sản phẩm khó bán (sold thấp nhất)
 export const getHardToSell = async (req, res) => {
   try {
-    const products = await Product.find()
-      .sort({ sold: 1 }) // ít bán nhất
-      .limit(5);
-    res.json(products);
+    const products = await Product.find({}, "title soldCount imageUrl");
+
+    const result = await Promise.all(
+      products.map(async (product) => {
+        const variants = await Variant.find({ productId: product._id }, "stock");
+        const totalStock = variants.reduce((sum, v) => sum + v.stock, 0);
+
+        return {
+          _id: product._id,
+          title: product.title,
+          soldCount: product.soldCount,
+          quantity: totalStock,
+          imageUrl: product.imageUrl,
+        };
+      })
+    );
+
+    const hardToSell = result.sort((a, b) => a.soldCount - b.soldCount).slice(0, 5);
+
+    res.json(hardToSell);
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err });
+    res.status(500).json({ message: "Server error", error: err });
   }
 };
