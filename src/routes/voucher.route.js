@@ -13,17 +13,11 @@ const router = express.Router();
 
 // Admin
 router.post("/", authenticate, createVoucher);
-<<<<<<< HEAD
+
 router.put("/:id", authenticate, requireAdmin, editVoucher);
 router.get("/", authenticate, getAllVouchers);
 router.get("/:id", authenticate,getVoucherById );
 router.delete("/:id", authenticate, requireAdmin, deleteVoucher);
-=======
-router.put("/:id", authenticate, editVoucher);
-router.get("/", authenticate, getAllVouchers);
-router.get("/:id", authenticate,getVoucherById );
-router.delete("/:id", authenticate, deleteVoucher);
->>>>>>> d1402b64f62aa83adf291359db0ddeabff2c349c
 
 
 // Public

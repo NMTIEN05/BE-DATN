@@ -1,18 +1,13 @@
-import express from 'express';
-import {
-  createFlashSale,
-  getAllFlashSales,
-  getFlashSaleById,
-  updateFlashSale,
-  deleteFlashSale
-} from '../controllers/flashSale.js';
+import express from "express";
+import { createFlashSale, getAllFlashSales } from "../controllers/flashSale.js";
+import { authenticate, requireAdmin } from "../middlewares/auth.js";
 
 const router = express.Router();
 
-router.post('/', createFlashSale);
-router.get('/', getAllFlashSales);
-router.get('/:id', getFlashSaleById);
-// router.put('/:id', updateFlashSale);
-// router.delete('/:id', deleteFlashSale);
+// Admin tạo flash sale
+router.post("/", authenticate, requireAdmin, createFlashSale);
+
+// Lấy tất cả flash sale
+router.get("/", getAllFlashSales);
 
 export default router;
