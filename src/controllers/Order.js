@@ -238,7 +238,7 @@ export const getOrdersByUser = async (req, res) => {
 
     // In log để debug
     console.log("🔍 Orders fetched for user:", userId);
-    console.dir(orders?.[0]?.items?.[0], { depth: null });
+
 
     return res.json({ data: orders });
   } catch (err) {
@@ -256,6 +256,7 @@ export const getAllOrders = async (req, res) => {
       order = "desc",
       status,
       userId,
+      orderId, // 👈 thêm param orderId để search theo id
     } = req.query;
 
     const offsetNumber = parseInt(offset, 10);
@@ -266,11 +267,15 @@ export const getAllOrders = async (req, res) => {
     if (status) filter.status = status;
     if (userId) filter.userId = userId;
 
+    // ✅ Tìm theo orderId (phải check ObjectId hợp lệ để tránh crash)
+    if (orderId && mongoose.Types.ObjectId.isValid(orderId)) {
+      filter._id = orderId;
+    }
+
     const orders = await Order.find(filter)
       .sort({ [sortBy]: sortOrder })
       .skip(offsetNumber)
       .limit(limitNumber)
-      // .populate("shipperId", "full_name email phone")  // populate thông tin shipper
       .populate({ path: "shipperId", model: "UserModel", select: "full_name email phone" })
       .populate("userId", "full_name email")
       .populate({
@@ -319,6 +324,7 @@ export const getAllOrders = async (req, res) => {
     });
   }
 };
+
 
 
 export const getOrderById = async (req, res) => {
