@@ -85,7 +85,7 @@ export const createOrder = async (req, res) => {
         });
       }
 
-      // Flash sale
+      // Xử lý Flash sale
       const now = new Date();
       const flashSale = await FlashSale.findOne({
         product: cartItem.productId,
@@ -105,11 +105,23 @@ export const createOrder = async (req, res) => {
         });
       }
 
-      // Trừ tồn kho
+      if (flashSale) {
+        if (flashSale.soldQuantity + quantity > flashSale.quantity) {
+          return res.status(400).json({
+            message: `Sản phẩm "${variant.name}" trong flash sale chỉ còn ${
+              flashSale.quantity - flashSale.soldQuantity
+            } xuất`,
+          });
+        }
+        flashSale.soldQuantity += quantity;
+        await flashSale.save();
+      }
+
+      // Trừ tồn kho variant
       variant.stock -= quantity;
       await variant.save();
 
-      // ✅ Tăng soldCount Variant & Product
+      // Tăng soldCount cho variant và product
       await Variant.findByIdAndUpdate(variant._id, { $inc: { soldCount: quantity } });
       await Product.findByIdAndUpdate(cartItem.productId, { $inc: { soldCount: quantity } });
 
@@ -124,14 +136,14 @@ export const createOrder = async (req, res) => {
       orderItems.push(orderItem);
     }
 
-    // Xóa cart items
+    // Xóa cart items đã checkout
     const variantIdsToRemove = itemsToCheckout.map((item) => item.variantId);
     await CartItem.deleteMany({ cartId: cart._id, variantId: { $in: variantIdsToRemove } });
 
     // Tính tổng tiền
     let totalAmountServer = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-    // Áp dụng voucher
+    // Áp dụng voucher nếu có
     let discountAmount = 0;
     if (voucherCode) {
       const voucher = await Voucher.findOne({ code: voucherCode });
@@ -163,6 +175,7 @@ export const createOrder = async (req, res) => {
 
     const finalTotal = Math.max(0, totalAmountServer - discountAmount);
 
+    // Cập nhật order
     order.items = orderItems.map((item) => item._id);
     order.totalAmount = finalTotal;
     order.discount = discountAmount;
