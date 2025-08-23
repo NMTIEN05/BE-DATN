@@ -159,3 +159,48 @@ export const getHardToSell = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err });
   }
 };
+// 🔹 Tổng quan dashboard theo khoảng ngày
+export const getDashboardSummaryByDate = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: "Vui lòng nhập startDate và endDate" });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999); // bao trọn ngày cuối
+
+    // Lấy đơn hàng trong khoảng thời gian
+    const orders = await Order.find({
+      createdAt: { $gte: start, $lte: end },
+      isDeleted: false
+    });
+
+    const totalOrders = orders.length;
+
+    // Tính tổng doanh thu
+    const totalRevenue = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+
+    // Tổng sản phẩm đã bán trong khoảng
+    // Giả sử Order có field items = [{ productId, quantity }]
+    let totalProductsSold = 0;
+    orders.forEach(order => {
+      if (order.items && Array.isArray(order.items)) {
+        totalProductsSold += order.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+      }
+    });
+
+    res.json({
+      totalOrders,
+      totalProductsSold,
+      totalRevenue,
+      startDate,
+      endDate
+    });
+  } catch (err) {
+    console.error("❌ Lỗi khi lọc dashboard theo ngày:", err);
+    res.status(500).json({ message: "Server error", error: err.message || err });
+  }
+};
