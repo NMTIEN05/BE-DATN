@@ -9,47 +9,46 @@ import { generateOrderConfirmationEmail, generateOrderStatusEmail } from "../uti
 import sendEmail from "../utils/sendMail.js";
 import Variant from "../model/Variant.js";
 import Voucher from "../model/voucher.js";
+import Product from "../model/Product.js"; // ✅ import Product để update soldCount
 
+import FlashSale from "../model/flashSale.js";
 
 export const createOrder = async (req, res) => {
   try {
     const userId = req.user?.id;
     if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: 'ID người dùng không hợp lệ' });
+      return res.status(400).json({ message: "ID người dùng không hợp lệ" });
     }
 
     const { shippingInfo, paymentMethod, itemsToCheckout, voucherCode } = req.body;
 
-    // ✅ Validate shippingInfo
     if (
       !shippingInfo ||
-      typeof shippingInfo !== 'object' ||
+      typeof shippingInfo !== "object" ||
       !shippingInfo.fullName ||
       !shippingInfo.phone ||
       !shippingInfo.address
     ) {
-      return res.status(400).json({ message: 'Thông tin giao hàng không hợp lệ' });
+      return res.status(400).json({ message: "Thông tin giao hàng không hợp lệ" });
     }
 
-    // ✅ Validate danh sách sản phẩm
     if (!itemsToCheckout || !Array.isArray(itemsToCheckout) || itemsToCheckout.length === 0) {
-      return res.status(400).json({ message: 'Danh sách sản phẩm thanh toán không hợp lệ' });
+      return res.status(400).json({ message: "Danh sách sản phẩm thanh toán không hợp lệ" });
     }
 
     const userObjectId = new mongoose.Types.ObjectId(userId);
     const cart = await Cart.findOne({ userId: userObjectId });
-    if (!cart) return res.status(404).json({ message: 'Không tìm thấy giỏ hàng' });
+    if (!cart) return res.status(404).json({ message: "Không tìm thấy giỏ hàng" });
 
     const cartItems = await CartItem.find({
       cartId: cart._id,
       variantId: { $in: itemsToCheckout.map((item) => item.variantId) },
-    }).populate('variantId');
+    }).populate("variantId");
 
     if (!cartItems.length) {
-      return res.status(400).json({ message: 'Không tìm thấy sản phẩm trong giỏ hàng' });
+      return res.status(400).json({ message: "Không tìm thấy sản phẩm trong giỏ hàng" });
     }
 
-    // ✅ Tạo đơn hàng rỗng trước
     const order = await Order.create({
       userId: userObjectId,
       items: [],
@@ -59,114 +58,104 @@ export const createOrder = async (req, res) => {
         fullName: shippingInfo.fullName,
         phone: shippingInfo.phone,
         address: shippingInfo.address,
-        ward: shippingInfo.ward || '',
-        district: shippingInfo.district || '',
-        province: shippingInfo.province || '',
+        ward: shippingInfo.ward || "",
+        district: shippingInfo.district || "",
+        province: shippingInfo.province || "",
       },
       paymentMethod,
-      status: 'pending',
-      shipperId: null,  // Chưa giao cho shipper nào
+      status: "pending",
+      shipperId: null,
     });
 
     const orderItems = [];
 
-   for (const selectedItem of itemsToCheckout) {
-  const cartItem = cartItems.find(
-    (ci) => ci.variantId._id.toString() === selectedItem.variantId
-  );
+    for (const selectedItem of itemsToCheckout) {
+      const cartItem = cartItems.find(
+        (ci) => ci.variantId._id.toString() === selectedItem.variantId
+      );
+      if (!cartItem) return res.status(400).json({ message: "Sản phẩm không nằm trong giỏ hàng" });
 
-  if (!cartItem) {
-    return res.status(400).json({ message: 'Sản phẩm không nằm trong giỏ hàng' });
-  }
+      const variant = await Variant.findById(selectedItem.variantId);
+      if (!variant) return res.status(404).json({ message: "Không tìm thấy biến thể sản phẩm" });
 
-  const variant = await Variant.findById(selectedItem.variantId);
-  if (!variant) {
-    return res.status(404).json({ message: 'Không tìm thấy biến thể sản phẩm' });
-  }
-
-  const quantity = selectedItem.quantity;
-
-  if (variant.stock < quantity) {
-    return res.status(400).json({
-      message: `Sản phẩm \"${variant.name}\" không đủ hàng. Hiện còn ${variant.stock}`,
-    });
-  }
-
-  // ⚡️ So sánh giá cũ (từ client/cart) với giá hiện tại
-  const currentPrice = variant.price || 0;
-  if (selectedItem.price && selectedItem.price !== currentPrice) {
-    // Bạn có thể return lỗi hoặc chỉ cảnh báo tuỳ ý
-    return res.status(400).json({
-      message: `Giá sản phẩm "${variant.name}" đã thay đổi từ ${selectedItem.price.toLocaleString(
-        'vi-VN'
-      )}₫ sang ${currentPrice.toLocaleString('vi-VN')}₫. Vui lòng kiểm tra lại.`,
-    });
-  }
-
-  // ✅ Trừ tồn kho
-  variant.stock -= quantity;
-  await variant.save();
-
-  // ✅ Tạo orderItem với giá mới nhất
-  const orderItem = await OrderItem.create({
-    orderId: order._id,
-    productId: cartItem.productId,
-    variantId: variant._id,
-    quantity,
-    price: currentPrice,
-  });
-
-  orderItems.push(orderItem);
-}
-
-
-    // ✅ Xoá item trong giỏ đã đặt
-    const variantIdsToRemove = itemsToCheckout.map((item) => item.variantId);
-    await CartItem.deleteMany({
-      cartId: cart._id,
-      variantId: { $in: variantIdsToRemove },
-    });
-
-    // ✅ Tính tổng tiền
-    let totalAmountServer = orderItems.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-
-    // ✅ Mã giảm giá
-    let discountAmount = 0;
-    if (voucherCode) {
-      const voucher = await Voucher.findOne({ code: voucherCode });
-
-      if (!voucher) {
-        return res.status(400).json({ message: 'Mã giảm giá không tồn tại' });
-      }
-
-      const now = new Date();
-      if (now < voucher.startDate || now > voucher.endDate) {
-        return res.status(400).json({ message: 'Mã giảm giá đã hết hạn' });
-      }
-
-      if (voucher.usedCount >= voucher.usageLimit) {
-        return res.status(400).json({ message: 'Mã giảm giá đã được sử dụng hết' });
-      }
-
-      if (totalAmountServer < voucher.minOrderValue) {
+      const quantity = selectedItem.quantity;
+      if (variant.stock < quantity) {
         return res.status(400).json({
-          message: `Đơn hàng phải đạt tối thiểu ${voucher.minOrderValue.toLocaleString(
-            'vi-VN'
-          )}₫ để dùng mã`,
+          message: `Sản phẩm "${variant.name}" không đủ hàng. Hiện còn ${variant.stock}`,
         });
       }
 
-      if (voucher.discountType === 'fixed') {
-        discountAmount = voucher.discountValue;
-      } else if (voucher.discountType === 'percentage') {
-        const percent = (totalAmountServer * voucher.discountValue) / 100;
-        discountAmount = voucher.maxDiscount
-          ? Math.min(percent, voucher.maxDiscount)
-          : percent;
+      // Flash sale
+      const now = new Date();
+      const flashSale = await FlashSale.findOne({
+        product: cartItem.productId,
+        variant: variant._id,
+        startTime: { $lte: now },
+        endTime: { $gte: now },
+        isActive: true,
+      });
+
+      const currentPrice = flashSale ? flashSale.salePrice : variant.price;
+
+      if (selectedItem.price && selectedItem.price !== currentPrice) {
+        return res.status(400).json({
+          message: `Giá sản phẩm "${variant.name}" đã thay đổi từ ${selectedItem.price.toLocaleString(
+            "vi-VN"
+          )}₫ sang ${currentPrice.toLocaleString("vi-VN")}₫. Vui lòng kiểm tra lại.`,
+        });
       }
+
+      // Trừ tồn kho
+      variant.stock -= quantity;
+      await variant.save();
+
+      // ✅ Tăng soldCount Variant & Product
+      await Variant.findByIdAndUpdate(variant._id, { $inc: { soldCount: quantity } });
+      await Product.findByIdAndUpdate(cartItem.productId, { $inc: { soldCount: quantity } });
+
+      // Tạo orderItem
+      const orderItem = await OrderItem.create({
+        orderId: order._id,
+        productId: cartItem.productId,
+        variantId: variant._id,
+        quantity,
+        price: currentPrice,
+      });
+      orderItems.push(orderItem);
+    }
+
+    // Xóa cart items
+    const variantIdsToRemove = itemsToCheckout.map((item) => item.variantId);
+    await CartItem.deleteMany({ cartId: cart._id, variantId: { $in: variantIdsToRemove } });
+
+    // Tính tổng tiền
+    let totalAmountServer = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+    // Áp dụng voucher
+    let discountAmount = 0;
+    if (voucherCode) {
+      const voucher = await Voucher.findOne({ code: voucherCode });
+      if (!voucher) return res.status(400).json({ message: "Mã giảm giá không tồn tại" });
+
+      if (new Date() < voucher.startDate || new Date() > voucher.endDate)
+        return res.status(400).json({ message: "Mã giảm giá đã hết hạn" });
+
+      if (voucher.usedCount >= voucher.usageLimit)
+        return res.status(400).json({ message: "Mã giảm giá đã được sử dụng hết" });
+
+      if (totalAmountServer < voucher.minOrderValue)
+        return res.status(400).json({
+          message: `Đơn hàng phải đạt tối thiểu ${voucher.minOrderValue.toLocaleString(
+            "vi-VN"
+          )}₫ để dùng mã`,
+        });
+
+      discountAmount =
+        voucher.discountType === "fixed"
+          ? voucher.discountValue
+          : voucher.maxDiscount
+          ? Math.min((totalAmountServer * voucher.discountValue) / 100, voucher.maxDiscount)
+          : (totalAmountServer * voucher.discountValue) / 100;
 
       voucher.usedCount += 1;
       await voucher.save();
@@ -174,27 +163,22 @@ export const createOrder = async (req, res) => {
 
     const finalTotal = Math.max(0, totalAmountServer - discountAmount);
 
-    // ✅ Cập nhật đơn hàng
     order.items = orderItems.map((item) => item._id);
     order.totalAmount = finalTotal;
     order.discount = discountAmount;
     await order.save();
 
-    // ✅ Gửi email xác nhận
+    // Gửi email xác nhận
     const user = await UserModel.findById(userId);
     if (user?.email) {
-      const html = generateOrderConfirmationEmail(
-        user.full_name || user.username,
-        order._id,
-        finalTotal
-      );
-      await sendEmail(user.email, '✅ Xác nhận đơn hàng từ HolaPhone', { html });
+      const html = generateOrderConfirmationEmail(user.full_name || user.username, order._id, finalTotal);
+      await sendEmail(user.email, "✅ Xác nhận đơn hàng từ HolaPhone", { html });
     }
 
     return res.status(201).json(order);
   } catch (err) {
-    console.error('❌ Lỗi khi tạo đơn hàng:', err);
-    res.status(500).json({ message: 'Lỗi khi tạo đơn hàng', error: err.message });
+    console.error("❌ Lỗi khi tạo đơn hàng:", err);
+    return res.status(500).json({ message: "Lỗi khi tạo đơn hàng", error: err.message });
   }
 };
 export const getOrdersByUser = async (req, res) => {

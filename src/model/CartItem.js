@@ -24,8 +24,22 @@ const cartItemSchema = new mongoose.Schema(
     },
     price: {
       type: Number,
-      required: true,
+      required: true, // Giá hiện tại (flash sale hoặc bình thường)
     },
+    flashSaleApplied: {
+      type: Boolean,
+      default: false, // Có áp dụng flash sale không
+    },
+    flashSalePrice: {
+      type: Number,
+      default: null, // Giá flash sale nếu có
+    },
+    discountPercent: {
+      type: Number,
+      default: 0, // % giảm nếu có flash sale
+    },
+    flashSaleStart: { type: Date, default: null },
+    flashSaleEnd: { type: Date, default: null },
   },
   { timestamps: true, versionKey: false }
 );

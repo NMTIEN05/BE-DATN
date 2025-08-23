@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const flashSaleSchema = new mongoose.Schema({
   product: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
+   variant: { type: mongoose.Schema.Types.ObjectId, ref: "Variant", required: true }, 
   salePrice: { type: Number, required: true },
   quantity: { type: Number, required: true },
   discountPercent: { type: Number, required: true },
