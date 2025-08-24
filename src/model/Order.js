@@ -66,7 +66,7 @@ shipperId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false 
 returnRequest: {
   status: {
     type: String,
-    enum: ["pending", "approved", "rejected"],
+        enum: ["requested", "approved", "rejected"], // ✅ thêm "requested"
     default: null,
   },
   reason: {
@@ -78,7 +78,10 @@ returnRequest: {
   },
 },
 
-
+deliveryFailedReason: {
+  type: String,
+  default: null,
+},
   paymentStatus: {
     type: String,
     enum: ["unpaid", "paid", "failed"],

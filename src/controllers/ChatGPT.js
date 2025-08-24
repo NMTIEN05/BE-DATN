@@ -10,33 +10,56 @@ const openai = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
   baseURL: "https://openrouter.ai/api/v1",
   defaultHeaders: {
-    "HTTP-Referer": "http://localhost:3000/", // domain frontend của bạn
-    "X-Title": "TuVanMuaDienThoai",           // tên ứng dụng hiển thị
+    "HTTP-Referer": "http://localhost:3000/",
+    "X-Title": "TuVanMuaDienThoai",
   },
 });
 
 export const chatTuvan = async (req, res) => {
   try {
     const { message } = req.body;
-console.log("✅ CHECK API KEY:", process.env.OPENROUTER_API_KEY);
+    console.log("✅ CHECK API KEY:", process.env.OPENROUTER_API_KEY);
 
-    // ✅ Lấy danh sách sản phẩm (top 10, chưa xoá)
-    const products = await Product.find({ deletedAt: null }).limit(10);
+    // ✅ Kiểm tra xem khách chỉ chào hay hỏi sản phẩm
+    const greetingKeywords = ["chào", "xin chào", "hi", "hello"];
+    const isGreeting = greetingKeywords.some((k) =>
+      message.toLowerCase().includes(k)
+    );
 
-    const productList = products.map((p) => {
-      const name = p.title || p.name || "Không tên";
-      const price = p.priceDefault
-        ? `${p.priceDefault.toLocaleString()} VND`
-        : "Giá không rõ";
-      const description = p.shortDescription || p.description || "Không có mô tả";
-      const link = `http://localhost:5173/product/${p._id}`; // lấy theo ID
+    if (isGreeting) {
+      return res.json({ reply: "Xin chào! Bạn cần giúp gì hôm nay?" });
+    }
 
-      return `- **${name}** (${price}): ${description}\n👉 [Xem chi tiết](${link})`;
-    }).join("\n\n");
+    // Lấy sản phẩm và các biến thể (variants)
+    const products = await Product.find({ deletedAt: null }).limit(10000).lean();
+
+    const productList = products
+      .map((p) => {
+        const name = p.title || p.name || "Không tên";
+        const price = p.priceDefault
+          ? `${p.priceDefault.toLocaleString()} VND`
+          : "Giá không rõ";
+        const description = p.shortDescription || p.description || "Không có mô tả";
+        const link = `http://localhost:5173/product/${p._id}`;
+
+        let variantText = "";
+        if (p.variants && p.variants.length) {
+          variantText = p.variants
+            .map(
+              (v) =>
+                `    - ${v.name || "Không tên"}: ${v.price?.toLocaleString() ?? "Giá không rõ"} VND`
+            )
+            .join("\n");
+          variantText = `\n  Biến thể:\n${variantText}`;
+        }
+
+        return `- **${name}** (${price}): ${description}${variantText}\n👉 [Xem chi tiết](${link})`;
+      })
+      .join("\n\n");
 
     const prompt = `
-Bạn là một chuyên viên tư vấn điện thoại.
-Dưới đây là danh sách sản phẩm có sẵn trong kho:
+Bạn là một chuyên viên tư vấn điện thoại thân thiện, lịch sự.
+Dưới đây là danh sách sản phẩm và các biến thể có sẵn trong kho:
 
 ${productList}
 

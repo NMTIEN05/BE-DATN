@@ -53,9 +53,7 @@ export const updateOrderStatusByShipper = async (req, res) => {
   const { id } = req.params;
   const { status, failReason } = req.body;
 
-  // ✅ Shipper chỉ được cập nhật các trạng thái này
   const allowedStatuses = ["shipped", "delivered", "delivery_failed"];
-
   if (!allowedStatuses.includes(status)) {
     return res.status(403).json({
       message: `Shipper chỉ được phép cập nhật trạng thái sang: ${allowedStatuses.join(", ")}`,
@@ -64,28 +62,25 @@ export const updateOrderStatusByShipper = async (req, res) => {
 
   try {
     const order = await Order.findById(id);
-    if (!order) {
-      return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
-    }
+    if (!order) return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
 
-    // ❌ Nếu đơn đã kết thúc thì không cho đổi nữa
     if (["delivered", "cancelled", "rejected", "returned"].includes(order.status)) {
       return res.status(400).json({
         message: `Không thể thay đổi trạng thái khi đơn hàng đã ở trạng thái: ${order.status}`,
       });
     }
 
-    // ✅ Cập nhật trạng thái
     order.status = status;
 
-    // 👉 Nếu shipper giao thành công + đơn COD => coi như đã thanh toán
     if (status === "delivered" && order.paymentMethod?.toLowerCase() === "cod") {
       order.paymentStatus = "paid";
     }
 
-    // 👉 Nếu thất bại => lưu lý do
-    if (status === "delivery_failed" && failReason) {
-      order.failReason = failReason;
+    if (status === "delivery_failed") {
+      if (!failReason || failReason.trim() === "") {
+        return res.status(400).json({ message: "Vui lòng nhập lý do giao hàng không thành công" });
+      }
+      order.deliveryFailedReason = failReason.trim();
     }
 
     await order.save();
@@ -95,5 +90,6 @@ export const updateOrderStatusByShipper = async (req, res) => {
     res.status(500).json({ message: "Lỗi server khi cập nhật trạng thái đơn hàng", error: error.message });
   }
 };
+
 
 
