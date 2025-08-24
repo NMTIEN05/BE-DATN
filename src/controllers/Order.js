@@ -375,7 +375,6 @@ export const getOrderById = async (req, res) => {
 };
 
 
-
 const ALLOWED_STATUS = [
   "pending", "processing", "ready_to_ship", "shipped",
   "delivered", "received", "delivery_failed",
@@ -400,7 +399,7 @@ const FORBIDDEN_ADMIN_STATUSES = ["shipped", "delivered", "received"];
 
 export const updateOrderStatus = async (req, res) => {
   try {
-    const { status, rejectReason, failReason, shipperId } = req.body;
+    const { status, rejectReason, failReason, returnReason, shipperId } = req.body;
     const { id } = req.params;
 
     if (!ALLOWED_STATUS.includes(status)) {
@@ -419,6 +418,26 @@ export const updateOrderStatus = async (req, res) => {
       });
     }
 
+    // ✅ Trường hợp user yêu cầu trả hàng
+    if (["delivered", "received"].includes(currentStatus) && status === "return_requested") {
+      if (!returnReason || returnReason.trim() === "") {
+        return res.status(400).json({ message: "Vui lòng nhập lý do trả hàng" });
+      }
+
+      order.status = "return_requested";
+      order.returnRequest = {
+        status: "requested",
+        reason: returnReason.trim(),
+        requestedAt: new Date(),
+      };
+
+      // reset failReason nếu trước đó có
+      order.deliveryFailedReason = null;
+
+      await order.save();
+      return res.json({ message: "Đã gửi yêu cầu trả hàng", order });
+    }
+
     // ✅ Trường hợp từ chối yêu cầu trả hàng
     if (currentStatus === "return_requested" && status === "rejected") {
       if (!rejectReason || rejectReason.trim() === "") {
@@ -432,6 +451,9 @@ export const updateOrderStatus = async (req, res) => {
         requestedAt: new Date(),
       };
 
+      // reset failReason nếu trước đó có
+      order.deliveryFailedReason = null;
+
       await order.save();
       return res.json({ message: "Đã từ chối yêu cầu trả hàng", order });
     }
@@ -444,8 +466,12 @@ export const updateOrderStatus = async (req, res) => {
 
       order.status = "delivery_failed";
       order.deliveryFailedReason = failReason.trim();
-      await order.save();
+      
 
+      // reset returnRequest nếu trước đó có
+      order.returnRequest = { status: null, reason: "", requestedAt: null };
+
+      await order.save();
       return res.json({ message: "Cập nhật trạng thái: giao hàng thất bại", order });
     }
 
@@ -475,6 +501,18 @@ export const updateOrderStatus = async (req, res) => {
       order.shipperId = undefined;
     }
 
+    // ✅ Reset dữ liệu phụ nếu trạng thái không liên quan
+  // ✅ Reset dữ liệu phụ chỉ khi thực sự không liên quan
+if (!["delivery_failed"].includes(status)) {
+  order.deliveryFailedReason = null;
+}
+
+
+
+    if (status !== "return_requested" && status !== "rejected") {
+      order.returnRequest = { status: null, reason: "", requestedAt: null };
+    }
+
     await order.save();
 
     // ✅ Gửi email thông báo cho user
@@ -494,6 +532,8 @@ export const updateOrderStatus = async (req, res) => {
     res.status(500).json({ message: "Lỗi cập nhật", error: err.message });
   }
 };
+
+
 
 
 
@@ -788,6 +828,3 @@ export const getOrdersByShipper = async (req, res) => {
     return res.status(500).json({ message: error.message, stack: error.stack });
   }
 };
-
-
-
