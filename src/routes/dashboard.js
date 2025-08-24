@@ -6,7 +6,8 @@ import {
   getFewStock,
   getLowStock,
   getHardToSell,
-  getDashboardSummaryByDate
+  getDashboardSummaryByDate,
+  getMonthlyRevenue
 } from '../controllers/dashboard.js';
 
 const router = express.Router();
@@ -18,6 +19,7 @@ router.get("/summary-by-date", getDashboardSummaryByDate);
 
 // Biểu đồ đơn hàng
 router.get('/monthly-orders', getMonthlyOrders);
+router.get('/monthly-revenue', getMonthlyRevenue);
 
 // Sản phẩm
 router.get('/best-sellers', getBestSellers);

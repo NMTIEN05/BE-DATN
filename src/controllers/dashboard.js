@@ -159,6 +159,7 @@ export const getHardToSell = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err });
   }
 };
+
 // 🔹 Tổng quan dashboard theo khoảng ngày
 export const getDashboardSummaryByDate = async (req, res) => {
   try {
@@ -202,5 +203,30 @@ export const getDashboardSummaryByDate = async (req, res) => {
   } catch (err) {
     console.error("❌ Lỗi khi lọc dashboard theo ngày:", err);
     res.status(500).json({ message: "Server error", error: err.message || err });
+  }
+};
+// 🔹 Biểu đồ doanh thu theo tháng
+export const getMonthlyRevenue = async (req, res) => {
+  try {
+    const result = await Order.aggregate([
+      { $match: { isDeleted: false } }, // chỉ lấy đơn không bị xóa
+      { 
+        $group: { 
+          _id: { $month: '$createdAt' }, 
+          revenue: { $sum: '$totalAmount' } 
+        } 
+      },
+      { $sort: { '_id': 1 } },
+    ]);
+
+    const chartData = Array.from({ length: 12 }, (_, i) => {
+      const found = result.find(item => item._id === i + 1);
+      return { month: `Tháng ${i + 1}`, revenue: found?.revenue || 0 };
+    });
+
+    res.json(chartData);
+  } catch (err) {
+    console.error("❌ Lỗi khi tính monthly revenue:", err);
+    res.status(500).json({ message: 'Server error', error: err });
   }
 };
