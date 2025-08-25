@@ -32,13 +32,18 @@ export const addToCart = async (req, res) => {
 
     // Lấy flash sale hiện tại nếu có
     const now = new Date();
-    const flashSale = await FlashSale.findOne({
+    let flashSale = await FlashSale.findOne({
       product: productId,
       variant: variantId,
       startTime: { $lte: now },
       endTime: { $gte: now },
       isActive: true,
     });
+
+    // Kiểm tra số lượng flash sale còn lại
+    if (flashSale && flashSale.soldQuantity >= flashSale.quantity) {
+      flashSale = null;
+    }
 
     // Giá áp dụng
     const priceToUse = flashSale ? flashSale.salePrice : variant.price;
