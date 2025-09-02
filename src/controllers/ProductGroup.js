@@ -16,7 +16,7 @@ export const getAllProductGroups = async (req, res) => {
     } = req.query;
 
     const offsetNumber = parseInt(offset, 10);
-    const limitNumber = parseInt(limit, 10);
+    const limitNumber = parseInt(limit, 100);
     const sortOrder = order === "desc" ? -1 : 1;
 
     // Tạo điều kiện lọc

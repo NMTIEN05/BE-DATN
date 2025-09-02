@@ -31,7 +31,9 @@ const orderSchema = new mongoose.Schema({
     "return_requested",    //  Yêu cầu trả hàng
     "returned",            //  Đã hoàn trả
     "cancelled",           //  Đã hủy (user/admin)
-    "rejected"             //  Admin từ chối đơn
+    "rejected"  ,
+     "return_to_store",      // 👈 thêm mới
+    "returned_to_store"     // 👈 thêm mới           //  Admin từ chối đơn
   ],
   default: "pending"
 },

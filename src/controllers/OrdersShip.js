@@ -53,8 +53,14 @@ export const updateOrderStatusByShipper = async (req, res) => {
   const { id } = req.params;
   const { status, failReason } = req.body;
 
-  const allowedStatuses = ["shipped", "delivered", "delivery_failed"];
-  if (!allowedStatuses.includes(status)) {
+  const allowedStatuses = [
+    "shipped",
+    "delivered",
+    "delivery_failed",
+    "return_to_store",
+    "returned_to_store"
+  ];
+    if (!allowedStatuses.includes(status)) {
     return res.status(403).json({
       message: `Shipper chỉ được phép cập nhật trạng thái sang: ${allowedStatuses.join(", ")}`,
     });

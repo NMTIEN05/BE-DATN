@@ -378,22 +378,27 @@ export const getOrderById = async (req, res) => {
 const ALLOWED_STATUS = [
   "pending", "processing", "ready_to_ship", "shipped",
   "delivered", "received", "delivery_failed",
-  "return_requested", "returned", "cancelled", "rejected"
+  "return_requested", "returned", "cancelled", "rejected",
+    "return_to_store", "returned_to_store" // 👈 thêm 2 trạng thái mới
+
 ];
 
 const STATUS_FLOW = {
   pending: ["processing", "cancelled"],
   processing: ["ready_to_ship", "cancelled"],
   ready_to_ship: ["shipped", "cancelled"],
-  shipped: ["delivered", "delivery_failed"],
-  delivery_failed: ["shipped"],
+  shipped: ["delivered", "delivery_failed", "return_to_store"], // shipper có thể trả về
+  delivery_failed: ["shipped", "return_to_store"], // 👈 chỉ để 1 dòng thôi
   delivered: ["received", "return_requested"],
   received: ["return_requested"],
   return_requested: ["returned", "delivered", "rejected"],
   returned: [],
+  return_to_store: ["returned_to_store"], // đang trả → đã về
+  returned_to_store: [],
   cancelled: [],
   rejected: []
 };
+
 
 const FORBIDDEN_ADMIN_STATUSES = ["shipped", "delivered", "received"];
 
@@ -459,21 +464,27 @@ export const updateOrderStatus = async (req, res) => {
     }
 
     // ✅ Trường hợp giao hàng thất bại
-    if (currentStatus === "shipped" && status === "delivery_failed") {
-      if (!failReason || failReason.trim() === "") {
-        return res.status(400).json({ message: "Vui lòng nhập lý do giao hàng không thành công" });
-      }
+    // ✅ Trường hợp hoàn trả về cửa hàng
+if (["shipped", "delivery_failed"].includes(currentStatus) && status === "return_to_store") {
+  if (!returnReason || returnReason.trim() === "") {
+    return res.status(400).json({ message: "Vui lòng nhập lý do hoàn trả về cửa hàng" });
+  }
 
-      order.status = "delivery_failed";
-      order.deliveryFailedReason = failReason.trim();
-      
+  order.status = "return_to_store";
+   order.returnReason = returnReason ? returnReason.trim() : null;
 
-      // reset returnRequest nếu trước đó có
-      order.returnRequest = { status: null, reason: "", requestedAt: null };
+  await order.save();
+  return res.json({ message: "Đơn hàng đang được hoàn trả về cửa hàng", order });
+}
 
-      await order.save();
-      return res.json({ message: "Cập nhật trạng thái: giao hàng thất bại", order });
-    }
+
+// ✅ Trường hợp đã hoàn trả về cửa hàng
+if (currentStatus === "return_to_store" && status === "returned_to_store") {
+  order.status = "returned_to_store";
+  await order.save();
+  return res.json({ message: "Đơn hàng đã hoàn về cửa hàng", order });
+}
+
 
     // ❌ Kiểm tra trạng thái kế tiếp có hợp lệ không
     const allowedNextStatuses = STATUS_FLOW[currentStatus] || [];

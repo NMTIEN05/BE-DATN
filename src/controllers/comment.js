@@ -41,7 +41,7 @@ export const listAllComments = async (req, res) => {
         .skip((page - 1) * limit)
         .limit(limit)
         .populate('user', 'username email')
-        .populate('product', 'name slug'),
+        .populate('product', 'title slug'),
       Comment.countDocuments(filter),
     ]);
 
