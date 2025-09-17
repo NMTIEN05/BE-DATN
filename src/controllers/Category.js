@@ -1,6 +1,7 @@
     import Category from "../model/Category.js";
 import { categorySchema } from "../validate/Category.js";
 import ProductGroup from "../model/ProductGroup.js";
+import Product from "../model/Product.js";
 
 
 export const getCategory = async (req, res) => {
@@ -8,7 +9,7 @@ export const getCategory = async (req, res) => {
     // Lấy query parameters từ URL
     let {
       offset = "0",
-      limit = "3",
+      limit = "10",
       sortBy = "createdAt",   // sắp xếp theo thời gian tạo
       order = "desc",         // mặc định giảm dần
       name,                   // lọc theo tên nếu có
@@ -86,16 +87,43 @@ export const createCategory = async (req, res) => {
 // ✅ Xoá danh mục theo ID
 export const deleteCategory = async (req, res) => {
   const { id } = req.params;
+
   try {
-    const category = await Category.findByIdAndUpdate(
-      id,
-      { deletedAt: new Date() },  // 👈 gán thời gian xoá
-      { new: true }
-    );
+    // 1. Tìm danh mục cần xoá
+    const category = await Category.findById(id);
     if (!category) {
       return res.status(404).json({ message: "Không tìm thấy danh mục" });
     }
-    res.status(200).json({ message: "Đã xoá mềm danh mục thành công", category });
+
+    // 2. Không cho xoá danh mục mặc định
+    if (category.name === "Điện thoại") {
+      return res.status(400).json({ message: "Không thể xoá danh mục mặc định" });
+    }
+
+    // 3. Tìm danh mục mặc định
+    const defaultCategory = await Category.findOne({ name: "Điện thoại", deletedAt: null });
+    if (!defaultCategory) {
+      return res.status(500).json({ message: "Không tìm thấy danh mục mặc định 'Điện thoại'" });
+    }
+
+    // 4. Chuyển toàn bộ sản phẩm của danh mục này sang danh mục mặc định
+    const updatedProducts = await Product.updateMany(
+      { categoryId: id },
+      { $set: { categoryId: defaultCategory._id } }
+    );
+
+    // 5. Xoá mềm danh mục
+    const updatedCategory = await Category.findByIdAndUpdate(
+      id,
+      { deletedAt: new Date() },
+      { new: true }
+    );
+
+    return res.status(200).json({
+      message: "Đã xoá mềm danh mục và chuyển sản phẩm về danh mục mặc định",
+      category: updatedCategory,
+      transferredProducts: updatedProducts.modifiedCount, // Số lượng sản phẩm đã chuyển
+    });
   } catch (error) {
     console.error("❌ Lỗi xoá mềm danh mục:", error);
     res.status(500).json({ message: "Lỗi server" });
@@ -178,6 +206,33 @@ export const getProductGroupsByCategoryId = async (req, res) => {
     });
   } catch (error) {
     console.error("Lỗi khi lấy ProductGroup theo categoryId:", error);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+export const getProductsByCategoryId = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const products = await Product.find({
+      categoryId: new mongoose.Types.ObjectId(id),
+      deletedAt: null,
+    })
+      .populate("categoryId")
+      .populate("groupId")
+      .populate({
+        path: "variants",
+        match: { deletedAt: null },
+        populate: {
+          path: "attributes.attributeId attributes.attributeValueId",
+        },
+      });
+
+    res.status(200).json({
+      success: true,
+      data: products,
+    });
+  } catch (error) {
+    console.error("Lỗi khi lấy sản phẩm theo categoryId:", error);
     res.status(500).json({ message: "Lỗi server" });
   }
 };

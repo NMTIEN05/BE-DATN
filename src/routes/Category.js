@@ -8,7 +8,8 @@ import {
   getProductGroupsByCategoryId,
   forceDeleteCategory,    // 👈 xoá cứng
   getDeletedCategories,   // 👈 danh sách đã xoá mềm
-  restoreCategory         // 👈 khôi phục
+  restoreCategory,
+  getProductsByCategoryId      // 👈 khôi phục
 } from "../controllers/Category.js";
 
 const router = express.Router();
@@ -25,5 +26,5 @@ router.get("/:id", getCategorybyId);
 router.put("/:id", updateCategory);
 router.delete("/:id", deleteCategory);
 router.get("/:id/product-groups", getProductGroupsByCategoryId);               // xoá mềm
-
+router.get("/:id/products", getProductsByCategoryId);
 export default router;

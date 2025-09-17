@@ -30,9 +30,21 @@ export const addToCart = async (req, res) => {
     let cartItem = await CartItem.findOne({ cartId: cart._id, productId, variantId });
 
     if (cartItem) {
+      if (cartItem.quantity + quantity > variant.stock) {
+        return res.status(400).json({
+          message: `Số lượng vượt quá tồn kho. Chỉ còn lại ${variant.stock - cartItem.quantity} sản phẩm.`,
+        });
+      }
+
       cartItem.quantity += quantity;
       await cartItem.save();
     } else {
+      if (quantity > variant.stock) {
+        return res.status(400).json({
+          message: `Số lượng vượt quá tồn kho. Chỉ còn lại ${variant.stock} sản phẩm.`,
+        });
+      }
+
       cartItem = await CartItem.create({
         cartId: cart._id,
         productId,
@@ -48,6 +60,7 @@ export const addToCart = async (req, res) => {
   }
 };
 
+
 // ✅ Lấy giỏ hàng của người dùng
 export const getCart = async (req, res) => {
   try {
@@ -58,13 +71,26 @@ export const getCart = async (req, res) => {
 
     const items = await CartItem.find({ cartId: cart._id })
       .populate("productId")
-      .populate("variantId");
+      .populate({
+        path: "variantId",
+        populate: [
+          {
+            path: "attributes.attributeId",
+            model: "Attribute",
+          },
+          {
+            path: "attributes.attributeValueId",
+            model: "AttributeValue",
+          },
+        ],
+      });
 
     res.json(items);
   } catch (err) {
     res.status(500).json({ message: "Lỗi lấy giỏ hàng", error: err.message });
   }
 };
+
 
 // ✅ Cập nhật số lượng sản phẩm trong giỏ
 export const updateCartItem = async (req, res) => {

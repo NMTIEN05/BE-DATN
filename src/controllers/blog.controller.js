@@ -1,9 +1,8 @@
-const path       = require('path');
-const Blog       = require('./blog.model');
-const { removeFile } = require('../utils/file.utils');
+import Blog from '../model/blog.model.js';
+import { removeFile } from '../utils/file.utils.js'; // Giả sử bạn có hàm này đã xử lý fs.unlink
 
 /* Tạo mới */
-exports.createBlog = async (req, res, next) => {
+export const createBlog = async (req, res, next) => {
   try {
     const {
       largeTitle,
@@ -33,7 +32,7 @@ exports.createBlog = async (req, res, next) => {
 };
 
 /* Lấy danh sách */
-exports.getAllBlogs = async (_req, res, next) => {
+export const getAllBlogs = async (_req, res, next) => {
   try {
     const blogs = await Blog.find().sort({ createdAt: -1 });
     res.json(blogs);
@@ -43,7 +42,7 @@ exports.getAllBlogs = async (_req, res, next) => {
 };
 
 /* Lấy một bài */
-exports.getBlogById = async (req, res, next) => {
+export const getBlogById = async (req, res, next) => {
   try {
     const blog = await Blog.findById(req.params.id);
     if (!blog) return res.status(404).json({ message: 'Not found' });
@@ -53,16 +52,14 @@ exports.getBlogById = async (req, res, next) => {
   }
 };
 
-/* Cập nhật – xoá ảnh cũ nếu có tải ảnh mới */
-exports.updateBlog = async (req, res, next) => {
+/* Cập nhật */
+export const updateBlog = async (req, res, next) => {
   try {
     const blog = await Blog.findById(req.params.id);
     if (!blog) return res.status(404).json({ message: 'Not found' });
 
-    // Lưu lại đường dẫn ảnh cũ (nếu có)
     const oldImage = blog.imageUrl;
 
-    // Cập nhật các trường được phép
     const fields = ['largeTitle', 'smallTitle', 'description', 'content', 'author'];
     fields.forEach((f) => {
       if (req.body[f] !== undefined) blog[f] = req.body[f];
@@ -74,7 +71,6 @@ exports.updateBlog = async (req, res, next) => {
 
     await blog.save();
 
-    // Nếu có ảnh mới → xoá ảnh cũ
     if (req.file && oldImage) {
       removeFile(oldImage).catch(console.error);
     }
@@ -85,13 +81,12 @@ exports.updateBlog = async (req, res, next) => {
   }
 };
 
-/* Xoá bài & file ảnh kèm theo */
-exports.deleteBlog = async (req, res, next) => {
+/* Xoá */
+export const deleteBlog = async (req, res, next) => {
   try {
     const blog = await Blog.findByIdAndDelete(req.params.id);
     if (!blog) return res.status(404).json({ message: 'Not found' });
 
-    // Xoá file ảnh nếu có
     if (blog.imageUrl) {
       removeFile(blog.imageUrl).catch(console.error);
     }

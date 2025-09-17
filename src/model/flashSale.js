@@ -2,12 +2,16 @@ import mongoose from 'mongoose';
 
 const flashSaleSchema = new mongoose.Schema(
   {
-    product: {
+    title:{
+      type: String,
+      required: true,
+      trim: true,
+    },
+    products: [{ 
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Product',
       required: true,
-      // unique: true,
-    },
+    }],
     discountPercent: {
       type: Number,
       required: true,

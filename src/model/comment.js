@@ -2,20 +2,25 @@ import mongoose from 'mongoose';
 
 const commentSchema = new mongoose.Schema(
   {
-    blog: {
+    product: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Blog',
+      ref: 'Product',
       required: true,
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'UserModel',
       required: true,
     },
     content: {
       type: String,
       required: true,
       trim: true,
+    },
+    rating: {
+      type: Number,
+      min: 1,
+      max: 5,
     },
     parent: {
       type: mongoose.Schema.Types.ObjectId,
@@ -24,7 +29,7 @@ const commentSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, // tự động tạo createdAt và updatedAt
+    timestamps: true,
   }
 );
 

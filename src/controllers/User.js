@@ -1,5 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import mongoose from 'mongoose';
+
 import UserModel from "../model/User.js";
 import sendEmail, { generatePasswordChangedEmail } from "../utils/sendMail.js";
 import { generateEmailVerificationCodeView } from "../views/auth.js";
@@ -18,20 +20,30 @@ async function register(req, res) {
     const { error } = registerSchema.validate(req.body);
     if (error) return res.status(400).json({ message: error.details[0].message });
 
-    const { username, full_name, email, password, phone, address, role } = req.body;
+    const { username, full_name, email, password, phone, address, province, district, ward, role } = req.body;
 
-    const existingUser = await UserModel.findOne({ email });
+    // Kiểm tra email trùng lặp
+    const existingUserByEmail = await UserModel.findOne({ email });
+
+    if (existingUserByEmail) {
+      return res.status(400).json({ message: "Email đã được sử dụng." });
+    }
+
+    // Kiểm tra phone trùng lặp (chỉ khi có phone)
+    if (phone && phone.trim()) {
+      const existingUserByPhone = await UserModel.findOne({ phone: phone.trim() });
+      if (existingUserByPhone) {
+        return res.status(400).json({ message: "Số điện thoại đã được sử dụng." });
+      }
+    }
 
     const code = generateVerificationCode();
 
-    if (existingUser) {
-      if (existingUser.isVerified) {
-        return res.status(400).json({ message: "Email đã được sử dụng." });
-      }
-
-      existingUser.emailVerifyCode = code;
-      existingUser.emailVerifyExpires = Date.now() + 15 * 60 * 1000;
-      await existingUser.save();
+    // Xử lý trường hợp email đã tồn tại nhưng chưa xác minh
+    if (existingUserByEmail && !existingUserByEmail.isVerified) {
+      existingUserByEmail.emailVerifyCode = code;
+      existingUserByEmail.emailVerifyExpires = Date.now() + 15 * 60 * 1000;
+      await existingUserByEmail.save();
 
       const html = generateEmailVerificationCodeView(code);
       await sendEmail(email, "Mã xác thực tài khoản", { html });
@@ -48,8 +60,11 @@ async function register(req, res) {
       full_name,
       email,
       password: hashedPassword,
-      phone,
+      phone: phone && phone.trim() ? phone.trim() : undefined,
       address: address || "",
+      province: province || "",
+      district: district || "",
+      ward: ward || "",
       role: role || "user",
       isVerified: false,
       emailVerifyCode: code,
@@ -64,7 +79,32 @@ async function register(req, res) {
       user: { ...userCreated.toObject(), password: undefined },
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Register error:', error);
+    
+    // Xử lý lỗi duplicate key
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      const value = error.keyValue[field];
+      
+      let message = '';
+      switch (field) {
+        case 'email':
+          message = `Email ${value} đã được sử dụng.`;
+          break;
+        case 'phone':
+          message = `Số điện thoại ${value} đã được sử dụng.`;
+          break;
+        case 'username':
+          message = `Tên đăng nhập ${value} đã được sử dụng.`;
+          break;
+        default:
+          message = `Dữ liệu ${field} đã tồn tại.`;
+      }
+      
+      return res.status(400).json({ message });
+    }
+    
+    res.status(500).json({ message: "Lỗi server khi đăng ký. Vui lòng thử lại." });
   }
 }
 
@@ -238,20 +278,37 @@ async function changePassword(req, res) {
 // [PUT] /users/:id
 async function updateUser(req, res) {
   try {
+    // Không cho cập nhật username và email
+   delete req.body.username;
+    delete req.body.email;
+
     const { error } = updateUserSchema.validate(req.body);
-    if (error) return res.status(400).json({ message: error.details[0].message });
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
 
     const { id } = req.params;
     const updatedData = req.body;
 
-    const user = await UserModel.findByIdAndUpdate(id, updatedData, { new: true });
-    if (!user) return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    const user = await UserModel.findByIdAndUpdate(id, updatedData, {
+      new: true,
+      runValidators: true,
+      context: "query",
+    });
 
-    res.json({ ...user.toObject(), password: undefined });
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
+    const userObj = user.toObject();
+    delete userObj.password;
+
+    res.json(userObj);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 }
+
 
 // [DELETE] /users/:id
 async function deleteUser(req, res) {
@@ -313,16 +370,67 @@ async function getAllUsers(req, res) {
 }
 
 // [GET] /users/:id
-async function getUserById(req, res) {
+ async function getUserById(req, res) {
   try {
     const { id } = req.params;
-    const user = await UserModel.findById(id).select("-password");
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID không hợp lệ" });
+    }
+    const user = await UserModel.findById(id);
     if (!user) return res.status(404).json({ message: "Không tìm thấy người dùng" });
-    res.json(user);
+    res.json(user); // password đã được ẩn nhờ transform
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 }
+// Lấy thông tin user hiện tại
+export const getCurrentUser = async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: "Token không hợp lệ hoặc đã hết hạn" });
+
+    const user = req.user.toJSON?.() || req.user;
+    res.json({ success: true, data: user });
+  } catch (error) {
+    console.error("Lỗi khi lấy user hiện tại:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+// Cập nhật user hiện tại
+export const updateCurrentUser = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const updateData = req.body;
+
+    const updatedUser = await UserModel.findByIdAndUpdate(userId, updateData, {
+      new: true,
+      runValidators: true,
+      context: "query",
+    }).select("-password");
+
+    if (!updatedUser) return res.status(404).json({ message: "Người dùng không tồn tại" });
+
+    res.json(updatedUser);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Vô hiệu hóa tài khoản hiện tại
+export const deleteCurrentUser = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const deletedUser = await UserModel.findByIdAndUpdate(
+      userId,
+      { isActive: false },
+      { new: true }
+    );
+    res.json({ message: "Tài khoản đã bị vô hiệu hóa", user: deletedUser });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 export {
   register,

@@ -25,21 +25,31 @@ export const userSchema = Joi.object({
     "string.empty": "Họ tên không được để trống",
     "string.min": "Họ tên phải có ít nhất 2 ký tự",
   }),
-
   role: Joi.string()
-    .valid("user", "admin", "staff")
+    .valid("user", "admin", "staff","shipper")
     .default("user")
     .messages({
-      "any.only": "Vai trò không hợp lệ (phải là admin, user hoặc staff)",
+        "any.only": "Vai trò không hợp lệ (phải là admin, user, staff hoặc shipper)",
     }),
   isActive: Joi.boolean().default(true),
 });
 
-
+// Schema validate cập nhật user
 export const updateUserSchema = Joi.object({
-  role: Joi.string().valid("admin", "staff", "user"),
-  isActive: Joi.boolean(),
+  full_name: Joi.string().min(2).max(100).optional(),
+  phone: Joi.string().pattern(/^[0-9]{9,11}$/).optional().messages({
+    "string.pattern.base": "Số điện thoại không hợp lệ",
+  }),
+  address: Joi.string().allow("").max(255).optional(),
+  province: Joi.string().allow("").optional(),
+  district: Joi.string().allow("").optional(),
+  ward: Joi.string().allow("").optional(),
+  role: Joi.string().valid("admin", "staff", "user", "shipper").optional(),
+
+  isActive: Joi.boolean().optional(),
 });
+
+// Schema validate đổi mật khẩu
 export const changePasswordSchema = Joi.object({
   oldPassword: Joi.string().required().messages({
     "string.empty": "Mật khẩu cũ không được để trống",

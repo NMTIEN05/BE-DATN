@@ -1,25 +1,18 @@
-import { Router } from 'express';
+import express from 'express';
 import {
   createFlashSale,
-  getActiveFlashSales,
   getAllFlashSales,
+  getFlashSaleById,
   updateFlashSale,
   deleteFlashSale
 } from '../controllers/flashSale.js';
 
-// SỬA LẠI: import đúng middleware theo named export
-import { authenticate } from '../middlewares/auth.js';
+const router = express.Router();
 
-const router = Router();
-
-// Công khai: user thấy flash sale đang hoạt động
-router.get('/active', getActiveFlashSales);
-
-// Admin: CRUD flash sale
-// router.use(authenticate); // yêu cầu đăng nhập cho các route sau
+router.post('/add', createFlashSale);
 router.get('/', getAllFlashSales);
-router.post('/', createFlashSale);
-router.put('/:id', updateFlashSale);
-router.delete('/:id', deleteFlashSale);
+router.get('/:id', getFlashSaleById);
+// router.put('/:id', updateFlashSale);
+// router.delete('/:id', deleteFlashSale);
 
 export default router;
